@@ -22,6 +22,19 @@ The game only shows what each hand has to do:
   - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
   - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
 
+## Getting around
+
+The start screen offers **Chord lessons** and **Play songs**. Neither starts anything on its own:
+
+- **Play songs** opens a song list (↑ / ↓ to move through it). Pick a song, a practice speed and whether to
+  hear the play-along guitar, then press Play (or Space). The last song you picked is remembered.
+- **Chord lessons** opens the list of lessons. Finished lessons get a ✓ and are remembered, and the big button
+  continues with the first one you haven't done yet. Any lesson can also be started straight from the list.
+
+When a song ends, the results screen offers *Play again*, the next lesson after a drill, or a way back to the
+list. *Exit* in a lesson goes back to the lesson list. **⌂ Menu** in the settings, or Esc while paused, returns
+to the start screen.
+
 ## Magnifier
 
 **🔍 Magnify the neck** (in the settings, the 🔍 button, or the M key) adds a close-up of the fretting hand's
@@ -41,7 +54,7 @@ changes between them in three steps, grouped by the song they lead to:
    so there are three silent beats to move, then two, three and four strums per bar.
 
 The drills are also in the song list under *Chord-change drills*. After a drill, the results screen offers the
-next lesson.
+next lesson. Lessons you have finished are ticked off in the lesson list.
 The chord to hold is shown on the neck. The lesson listens through the device microphone and moves on only
 when it hears the chord played correctly. When a strum is wrong, it says what to fix:
 
@@ -99,10 +112,11 @@ Microphone access needs a secure context: `localhost` or HTTPS.
 | Key / control      | Action                                 |
 | ------------------ | -------------------------------------- |
 | Space              | Play / pause                           |
+| Esc                | Pause; when paused, back to the menu. In a lesson, exit it |
 | R                  | Restart (with a one-bar count-in)      |
 | ← / →              | Jump back / forward one bar            |
 | Drag / scroll      | Move / zoom the camera                 |
-| Speed slider       | 40–120 % tempo                         |
+| Practice speed     | 25 / 50 / 75 / 100 %; below 100 % the song waits for you |
 | Look-ahead slider  | How early cues appear                  |
 | Play-along sound   | Synthesised guitar playing the part (off by default) |
 | Mic delay          | Compensates for microphone latency     |

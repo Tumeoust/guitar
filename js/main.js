@@ -142,7 +142,7 @@ function play() {
   if (state.speed < 0.999 && !mic?.active) {
     enableMic().then((err) => err && setPracticeStatus(`${err}. The song won't wait for you.`, 'bad'));
   }
-  $('overlay').hidden = true;
+  hideMenu();
   if (state.anchorBeat >= state.song.length) {
     state.anchorBeat = -countInBeats();
     resetStats();
@@ -222,7 +222,6 @@ function setSpeed(pct) {
     state.anchorTime = clockNow();
     state.scheduledBeat = Math.max(state.scheduledBeat, b);
   }
-  $('speed-val').textContent = `${pct}%`;
 }
 
 function updatePlayButton() {
@@ -363,8 +362,9 @@ const lessonUi = {
     $('lesson-status').className = 'ok';
     $('lesson-skip').hidden = true;
     $('lesson-next').hidden = last;
+    markLessonDone(lessonIndex());
     renderLessonDots();
-    if (!last) autoNext = setTimeout(() => startLesson(next), 2500);
+    if (!last) autoNext = setTimeout(() => startLesson(next), 1000);
   },
 };
 
@@ -398,9 +398,8 @@ async function startLesson(i) {
   }
   state.lessonSong = null;
   pause();
-  $('overlay').hidden = true;
+  hideMenu();
   $('panel').classList.remove('open');
-  $('lesson-select').value = i;
   const err = await enableMic();
   document.body.classList.add('lesson-mode');
   $('lesson').hidden = false;
@@ -425,15 +424,12 @@ async function startLesson(i) {
 async function startDrill(i) {
   exitLesson();
   const idx = SONGS.findIndex((song) => song.id === LESSONS[i].song);
-  $('lesson-select').value = i;
   select.value = idx;
   loadSong(SONGS[idx]);
   state.lessonSong = i;
   $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length} — ${LESSONS[i].tip}`;
-  $('speed').value = 100;
   setSpeed(100);
   $('metro').checked = state.metro = true;
-  $('results').innerHTML = '';
   await enableMic(); // for grading; the drill plays without it too
   play();
 }
@@ -614,11 +610,132 @@ function showResults() {
     : mic?.active && acc != null
       ? `<h2>${acc}% accuracy</h2><p class="muted">Best streak ${state.stats.best}</p>`
       : '<h2>Song complete</h2>';
-  $('start').textContent = 'Play again';
-  const next = state.lessonSong == null ? -1 : state.lessonSong + 1;
-  $('results-next').hidden = next < 0 || next >= LESSONS.length;
-  if (next >= 0 && next < LESSONS.length) $('results-next').textContent = `Next lesson: ${LESSONS[next].title} →`;
+  const drill = state.lessonSong;
+  if (drill != null) markLessonDone(drill);
+  const next = drill == null ? -1 : drill + 1;
+  const hasNext = next >= 0 && next < LESSONS.length;
+  $('results-next').hidden = !hasNext;
+  if (hasNext) $('results-next').textContent = `Next lesson: ${LESSONS[next].title} →`;
+  $('results-again').classList.toggle('primary', !hasNext);
+  $('results-back').textContent = drill == null ? '← Choose another song' : '← All lessons';
+  showScreen('results');
+}
+
+// ---- Menu ------------------------------------------------------------------
+// The overlay holds the start screen, the song and lesson pickers, and the results. Nothing plays until
+// the player has picked something and pressed a button for it.
+let screen = 'home';
+const inMenu = () => !$('overlay').hidden;
+
+function showScreen(name) {
+  pause();
+  if (document.body.classList.contains('lesson-mode')) exitLesson();
+  screen = name;
+  for (const n of ['home', 'songs', 'lessons', 'results']) $(`screen-${n}`).hidden = n !== name;
   $('overlay').hidden = false;
+  document.body.classList.add('menu');
+  if (name === 'songs') renderSongList();
+  if (name === 'lessons') renderLessonList();
+  const focus = { songs: 'song-go', lessons: 'lesson-continue', results: $('results-next').hidden ? 'results-again' : 'results-next' }[name];
+  if (focus) $(focus).focus({ preventScroll: true });
+}
+
+function hideMenu() {
+  $('overlay').hidden = true;
+  document.body.classList.remove('menu');
+}
+
+// Esc and the ← Back buttons go one level up.
+function menuBack() {
+  if (screen === 'results') showScreen(state.lessonSong == null ? 'songs' : 'lessons');
+  else if (screen !== 'home') showScreen('home');
+}
+
+// Groups list items under headings; groupOf(item) names the group, make(item, i) builds its element.
+function fillList(el, items, groupOf, make) {
+  let group = null;
+  const children = [];
+  items.forEach((item, i) => {
+    if (groupOf(item) !== group) {
+      group = groupOf(item);
+      const h = document.createElement('div');
+      h.className = 'pick-group';
+      h.textContent = group;
+      children.push(h);
+    }
+    children.push(make(item, i));
+  });
+  el.replaceChildren(...children);
+}
+
+function pickItem(html, className = '') {
+  const el = document.createElement('button');
+  el.className = `pick-item ${className}`;
+  el.innerHTML = html;
+  return el;
+}
+
+const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const songGroup = (song) => (song.drill ? 'Chord-change drills' : 'Songs');
+
+function renderSongList() {
+  fillList($('song-list'), SONGS, songGroup, (song, i) => {
+    const capo = song.capo ? ` <span class="badge">Capo ${song.capo}</span>` : '';
+    const el = pickItem(`<b>${escapeHtml(song.title)}${capo}</b><span class="muted small">${escapeHtml(song.subtitle)}</span>`,
+      song === state.song ? 'on' : '');
+    el.setAttribute('role', 'option');
+    el.setAttribute('aria-selected', song === state.song);
+    el.addEventListener('click', () => chooseSong(i));
+    el.addEventListener('dblclick', startSong);
+    return el;
+  });
+  $('song-go').textContent = `▶ Play ${state.song.title}`;
+  $('song-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' });
+}
+
+function chooseSong(i) {
+  state.lessonSong = null;
+  select.value = i;
+  if (SONGS[i] !== state.song) loadSong(SONGS[i]);
+  try { localStorage.setItem('fretview.song', SONGS[i].id); } catch { /* storage unavailable */ }
+  if (screen === 'songs' && inMenu()) renderSongList();
+}
+
+function startSong() {
+  if (state.anchorBeat >= state.song.length) restart();
+  else play();
+}
+
+// Finished lessons are remembered by title, so the list can show them and "Continue" picks the next one.
+let lessonsDone = new Set();
+try { lessonsDone = new Set(JSON.parse(localStorage.getItem('fretview.lessonsDone')) || []); } catch { /* storage unavailable */ }
+
+function markLessonDone(i) {
+  if (!LESSONS[i]) return;
+  lessonsDone.add(LESSONS[i].title);
+  try { localStorage.setItem('fretview.lessonsDone', JSON.stringify([...lessonsDone])); } catch { /* storage unavailable */ }
+}
+
+const nextLesson = () => Math.max(0, LESSONS.findIndex((l) => !lessonsDone.has(l.title)));
+const LESSON_KINDS = { race: 'Against the clock', song: 'In time, with the metronome' };
+
+function renderLessonList() {
+  const next = nextLesson();
+  fillList($('lesson-list'), LESSONS, (l) => l.group, (l, i) => {
+    const done = lessonsDone.has(l.title);
+    const kind = LESSON_KINDS[l.kind] || (l.chords.length > 1 ? 'At your own pace' : 'One chord');
+    const el = pickItem(
+      `<span class="num">${done ? '✓' : i + 1}</span><b>${escapeHtml(l.title)}</b><span class="muted small">${kind}</span>`,
+      `${done ? 'done' : ''} ${i === next ? 'on' : ''}`,
+    );
+    el.addEventListener('click', () => startLesson(i));
+    return el;
+  });
+  const allDone = LESSONS.every((l) => lessonsDone.has(l.title));
+  $('lesson-continue').textContent = allDone
+    ? '🎉 All done — start again from lesson 1'
+    : `${lessonsDone.size ? 'Continue' : 'Start'} with ${next + 1}. ${LESSONS[next].title} →`;
+  $('lesson-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' });
 }
 
 // ---- Magnifier -------------------------------------------------------------
@@ -830,18 +947,22 @@ function fillGrouped(el, items, groupOf, label) {
 }
 
 const select = $('song-select');
-fillGrouped(select, SONGS, (song) => (song.drill ? 'Chord-change drills' : 'Songs'), (song) => song.title);
+fillGrouped(select, SONGS, songGroup, (song) => song.title);
 select.addEventListener('change', () => {
-  state.lessonSong = null;
-  loadSong(SONGS[select.value]);
+  exitLesson();
+  chooseSong(Number(select.value));
   select.blur();
 });
 
-const lessonSelect = $('lesson-select');
-fillGrouped(lessonSelect, LESSONS, (l) => l.group, (l, i) => `${i + 1}. ${l.title}`);
+$('start').addEventListener('click', () => showScreen('songs'));
+$('start-lessons').addEventListener('click', () => showScreen('lessons'));
+$('menu-open').addEventListener('click', () => showScreen('home'));
+document.querySelectorAll('#overlay .back').forEach((el) => el.addEventListener('click', menuBack));
+$('song-go').addEventListener('click', startSong);
+$('lesson-continue').addEventListener('click', () => startLesson(nextLesson()));
 $('results-next').addEventListener('click', () => startLesson(state.lessonSong + 1));
-$('lesson-start').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
-$('start-lessons').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
+$('results-again').addEventListener('click', restart);
+$('results-back').addEventListener('click', menuBack);
 $('lesson-hear').addEventListener('click', hearChord);
 document.querySelectorAll('.sensitivity').forEach((el) => {
   el.addEventListener('input', () => setSensitivity(Number(el.value)));
@@ -849,17 +970,8 @@ document.querySelectorAll('.sensitivity').forEach((el) => {
 setSensitivity(sensitivity);
 $('lesson-skip').addEventListener('click', () => lesson?.skip());
 $('lesson-next').addEventListener('click', () => startLesson(lessonIndex() + 1));
-$('lesson-exit').addEventListener('click', () => {
-  exitLesson();
-  $('panel').classList.add('open');
-});
+$('lesson-exit').addEventListener('click', () => showScreen('lessons'));
 
-$('start').addEventListener('click', () => {
-  exitLesson();
-  $('results').innerHTML = '';
-  if (state.anchorBeat >= state.song.length) restart();
-  else play();
-});
 $('play').addEventListener('click', () => {
   exitLesson();
   if (running()) pause();
@@ -870,21 +982,19 @@ $('restart').addEventListener('click', () => {
   exitLesson();
   restart();
 });
-$('speed').addEventListener('input', (e) => setSpeed(Number(e.target.value)));
 document.querySelectorAll('.speeds button').forEach((el) => {
-  el.addEventListener('click', () => {
-    $('speed').value = el.dataset.speed;
-    setSpeed(Number(el.dataset.speed));
-  });
+  el.addEventListener('click', () => setSpeed(Number(el.dataset.speed)));
 });
 $('look').addEventListener('input', (e) => {
   state.lookSec = Number(e.target.value);
   $('look-val').textContent = `${state.lookSec.toFixed(1)} s`;
 });
-$('guide').addEventListener('change', (e) => {
-  state.guide = e.target.checked;
+// The play-along sound can be switched in the song picker and in the settings.
+document.querySelectorAll('.guide').forEach((el) => el.addEventListener('change', () => {
+  state.guide = el.checked;
+  document.querySelectorAll('.guide').forEach((other) => { other.checked = state.guide; });
   if (!state.guide) audio?.stopAll();
-});
+}));
 $('metro').addEventListener('change', (e) => { state.metro = e.target.checked; });
 $('loop').addEventListener('change', (e) => { state.loop = e.target.checked; });
 $('view-player').addEventListener('click', () => setView('player'));
@@ -908,9 +1018,22 @@ $('progress').addEventListener('click', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (e.target.tagName === 'SELECT' || (e.target.tagName === 'INPUT' && e.code !== 'Escape')) return;
   if (e.code === 'KeyM') {
     setMagnify(!magnify);
+    return;
+  }
+  if (inMenu()) {
+    if (e.code === 'Escape') menuBack();
+    else if (screen === 'songs' && (e.code === 'ArrowDown' || e.code === 'ArrowUp')) {
+      e.preventDefault();
+      const i = SONGS.indexOf(state.song) + (e.code === 'ArrowDown' ? 1 : -1);
+      if (i >= 0 && i < SONGS.length) chooseSong(i);
+    } else if (e.code === 'Space' && (screen === 'songs' || screen === 'results')) {
+      e.preventDefault(); // or the focused button would be pressed as well
+      if (screen === 'songs') startSong();
+      else $('results-again').click();
+    }
     return;
   }
   if (lesson || document.body.classList.contains('lesson-mode')) {
@@ -918,10 +1041,12 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   const bpb = state.song.beatsPerBar;
-  if (e.code === 'Space') {
+  if (e.code === 'Escape') {
+    if (running()) pause();
+    else showScreen('home');
+  } else if (e.code === 'Space') {
     e.preventDefault();
-    if (!$('overlay').hidden) $('start').click();
-    else if (running()) pause();
+    if (running()) pause();
     else play();
   } else if (e.code === 'KeyR') restart();
   else if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
@@ -932,6 +1057,10 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
-loadSong(SONGS[0]);
+let savedSong = null;
+try { savedSong = SONGS.find((song) => song.id === localStorage.getItem('fretview.song')); } catch { /* storage unavailable */ }
+select.value = SONGS.indexOf(savedSong ?? SONGS[0]);
+loadSong(savedSong ?? SONGS[0]);
+showScreen('home');
 requestAnimationFrame(frame);
 if (selfTest) window.fretview = { state, camera, controls, CHORDS, get mic() { return mic; }, get audio() { return audio; }, get lesson() { return lesson; } };

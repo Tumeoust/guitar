@@ -77,6 +77,7 @@ body:has(#panel.open) #hud { right: 312px; }
   overflow-y: auto;
 }
 #panel-toggle { position: absolute; top: 8px; right: 8px; z-index: 1; }
+#menu-open { position: absolute; top: 8px; left: 8px; padding: 4px 10px; }
 #panel:not(.open) { bottom: auto; width: 46px; height: 46px; overflow: hidden; }
 #panel:not(.open) .panel-body { display: none; }
 #panel.open .panel-body { padding-top: 44px; }
@@ -232,7 +233,48 @@ body.lesson-mode.race .chords > div:nth-child(2) { display: block; }
 .card h1 { margin: 0 0 8px; font-size: 32px; letter-spacing: .02em; }
 .card ul { text-align: left; padding-left: 18px; }
 .card li { margin: 6px 0; }
-#results:not(:empty) { margin-top: 16px; }
+#results h2 { margin: 0 0 4px; font-size: 28px; }
+#results p { margin: 0 0 16px; }
+#overlay .card[hidden] { display: none; }
+#screen-results { width: min(520px, 100%); }
+#screen-results .start-row { flex-wrap: wrap; }
+#screen-results .start-row button { white-space: nowrap; padding-inline: 24px; }
+.card.wide { width: min(620px, 100%); text-align: left; display: flex; flex-direction: column; gap: 12px; max-height: calc(100dvh - 32px); }
+.card.wide > p { margin: 0; }
+.card-head { display: flex; align-items: center; gap: 12px; }
+.card-head h2 { margin: 0; font-size: 22px; }
+.card-head .back { flex: 0 0 auto; }
+#song-go, #lesson-continue { align-self: center; }
+button.link { background: none; border: none; color: var(--muted); margin-top: 12px; }
+button.link:hover { color: var(--text); background: none; }
+
+/* Song and lesson pickers */
+.pick-list {
+  display: flex; flex-direction: column; gap: 4px;
+  overflow-y: auto; min-height: 120px; max-height: 46vh; padding-right: 4px;
+}
+.pick-group {
+  font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--muted); margin: 8px 0 2px;
+}
+.pick-group:first-child { margin-top: 0; }
+.pick-item {
+  display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: baseline;
+  text-align: left; padding: 8px 12px; background: rgba(255, 255, 255, 0.04);
+}
+.pick-item > :not(.num) { grid-column: 2; }
+.pick-item .badge {
+  margin-left: 6px; padding: 0 6px; border-radius: 5px; background: #ffd166; color: #0b0d12; font-size: 11px; font-weight: 800;
+}
+.pick-item:not(:has(.num)) { grid-template-columns: 1fr; }
+.pick-item:not(:has(.num)) > * { grid-column: 1; }
+.pick-item .num { grid-row: span 2; width: 22px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pick-item.done .num { color: #3ddc84; font-weight: 800; }
+.pick-item.on { border-color: var(--accent); background: rgba(76, 201, 240, 0.14); }
+
+/* On the start screen and in the pickers, only the guitar stays in the background. */
+body.menu #hud, body.menu #panel, body.menu #legend, body.menu #zoom, body.menu #zoom-fab,
+body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: none !important; }
 
 #rotate-hint { display: none; }
 @media (orientation: portrait) and (max-width: 700px) {
