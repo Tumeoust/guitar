@@ -645,7 +645,10 @@ function frame() {
   }
 
   const lookBeats = state.lookSec * beatsPerSec();
-  cues.update(song, beat, lookBeats, dt, practising ? OVERRUN_SEC * beatsPerSec() : 0);
+  cues.update(song, beat, lookBeats, dt, {
+    overrun: practising ? OVERRUN_SEC * beatsPerSec() : 0,
+    hold: state.waiting?.beat ?? null,
+  });
   guitar.markStrings(cues.shownShape?.frets);
   guitar.update(dt);
   updateHud(beat);

@@ -16,6 +16,8 @@ export function stringColor(frets, fingers, s) {
   return frets[s] > 0 ? FINGER_COLORS[fingers[s] || 1] : OPEN_COLOR;
 }
 const LANE_WIDTH = 7.4;
+// How long after a chord's last strum (or pick) has crossed the line the next chord takes its place.
+const LET_GO_BEATS = 0.25;
 
 class Pool {
   constructor(parent, create) {
@@ -301,7 +303,8 @@ export class Cues {
 
   // overrun: how many beats right-hand cues keep travelling past the strike line before they
   // disappear (practice mode, so the cue doesn't stall while the microphone is still listening).
-  update(song, beat, lookBeats, dt, overrun = 0) {
+  // hold: beat of a cue practice mode is still waiting for; its chord stays on the neck until then.
+  update(song, beat, lookBeats, dt, { overrun = 0, hold = null } = {}) {
     this.sprites.begin();
     this.bars.begin();
     this.lines.begin();
@@ -310,8 +313,23 @@ export class Cues {
     this.beatLines.begin();
 
     // ---- Left hand -------------------------------------------------------
-    const { cur, next } = findSegments(song.left, beat);
-    if (cur) {
+    // Show the shape for the next strum still to come: once the current chord's last strum has gone
+    // by, the hand can already move to the next chord, so that one replaces it (with its shrinking
+    // ring counting down to it).
+    let { cur, next } = findSegments(song.left, hold ?? beat);
+    let early = false;
+    if (hold == null && cur && next) {
+      const c = cur;
+      const last = song.right.findLast((e) => e.beat >= c.beat && e.beat < c.beat + c.dur);
+      if (last && beat > last.beat + LET_GO_BEATS) {
+        early = true;
+        cur = next;
+        next = null;
+      }
+    }
+    if (cur && early) {
+      this.drawShape(cur.shape, 1, Math.min(1, Math.max(0, cur.beat - beat) / lookBeats), 0);
+    } else if (cur) {
       const pulse = Math.max(0, 1 - (beat - cur.beat) * 3);
       this.drawShape(cur.shape, 1, null, pulse);
     }

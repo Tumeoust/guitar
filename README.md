@@ -13,6 +13,9 @@ The game only shows what each hand has to do:
   Colour always means a finger: each string to be played glows in the colour of the finger fretting it,
   from the finger to the bridge. Open strings glow white.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
+  As soon as the last strum of a chord has gone past the line, the neck already shows the next chord, so your
+  fingers can move before its first strum arrives. Below 100 % speed, a chord the game is still waiting for
+  stays on the neck until it has been played right.
 - **Right hand.** Cues slide along the strings from the bridge towards the white line over the soundhole.
   Strum or pick when they reach it.
   - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
