@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
   SCALE, fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, TOP_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
 } from './guitar.js';
-import { discTexture, ringTexture, crossTexture, wideLabelTexture } from './textures.js';
+import { discTexture, ringTexture, wideLabelTexture } from './textures.js';
 import { CHORD_NAMES } from './songs.js';
 
 export const FINGER_COLORS = { 1: '#4cc9f0', 2: '#80ed99', 3: '#ffd166', 4: '#f472b6' };
@@ -219,9 +219,9 @@ export class Cues {
     for (let i = 0; i < 6; i++) {
       const f = frets[i];
       if (f == null) continue;
-      if (f === -1) {
-        this.marker(crossTexture('#ff5d73'), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.95, alpha, order);
-      } else if (f === 0) {
+      // Muted strings (-1) are shown by the red ✕ on the string label at the tuning pegs.
+      if (f === -1) continue;
+      if (f === 0) {
         this.marker(ringTexture(OPEN_COLOR, 14), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.95, alpha, order);
       } else {
         const finger = fingers[i] || 1;
@@ -299,7 +299,9 @@ export class Cues {
     return this.arrowGeos.get(key);
   }
 
-  update(song, beat, lookBeats, dt) {
+  // overrun: how many beats right-hand cues keep travelling past the strike line before they
+  // disappear (practice mode, so the cue doesn't stall while the microphone is still listening).
+  update(song, beat, lookBeats, dt, overrun = 0) {
     this.sprites.begin();
     this.bars.begin();
     this.lines.begin();
@@ -344,11 +346,22 @@ export class Cues {
     const span = HIGHWAY_END - STRIKE_X;
     for (const ev of song.right) {
       const d = ev.beat - beat;
-      if (d < -0.5) continue;
       if (d > lookBeats) break;
-      const x = d > 0 ? STRIKE_X + (d / lookBeats) * span : STRIKE_X;
-      const fade = d < 0 ? Math.max(0, 1 + d * 2) : Math.min(1, (lookBeats - d) * 2);
-      const grow = d < 0 ? 1 - d * 2.5 : 1;
+      let x, fade, grow;
+      if (overrun > 0) {
+        // Keep flowing past the line: dim a little up to `overrun`, then fade out quickly.
+        if (d < -overrun * 1.4) continue;
+        x = STRIKE_X + (d / lookBeats) * span;
+        fade = d >= 0 ? Math.min(1, (lookBeats - d) * 2)
+          : d >= -overrun ? 1 + (0.4 * d) / overrun
+            : 0.6 * (1.4 + d / overrun) / 0.4;
+        grow = 1;
+      } else {
+        if (d < -0.5) continue;
+        x = d > 0 ? STRIKE_X + (d / lookBeats) * span : STRIKE_X;
+        fade = d < 0 ? Math.max(0, 1 + d * 2) : Math.min(1, (lookBeats - d) * 2);
+        grow = d < 0 ? 1 - d * 2.5 : 1;
+      }
       if (ev.kind === 'pick') {
         const s = ev.strings[0];
         const gem = this.gems.get();

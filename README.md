@@ -8,8 +8,8 @@ The game only shows what each hand has to do:
 
 - **Left hand.** Coloured dots on the fretboard show which finger goes where:
   1 = index (blue), 2 = middle (green), 3 = ring (yellow), 4 = pinky (pink).
-  ○ at the nut means play the string open, and ✕ means don't play it; the string's letter by its tuning peg
-  turns red as well. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
+  ○ at the nut means play the string open, and a red ✕ over the string's letter by its tuning peg means don't
+  play it. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
   Colour always means a finger: each string to be played glows in the colour of the finger fretting it,
   from the finger to the bridge. Open strings glow white.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
@@ -43,7 +43,9 @@ The game is silent by default. The play-along guitar sound can be switched on in
 
 **Practice speeds.** Every song can be played at 25 %, 50 %, 75 % or 100 % speed. Below 100 %, the song stops at
 the start of each bar and waits until the microphone hears the chord played right; the same feedback as in the
-lessons tells you what to fix. In single-note songs it waits for every note. At 100 % it plays straight through.
+lessons tells you what to fix. In single-note songs it waits for every note. The cues keep sliding a little way
+past the line while the microphone listens, so playing on time doesn't stall the song; it only stops if you
+haven't played it right by then. At 100 % it plays straight through.
 
 An optional **microphone mode** listens to your guitar and grades each strum or pick as
 *Perfect*, *Good*, *Wrong notes* or *Miss*:

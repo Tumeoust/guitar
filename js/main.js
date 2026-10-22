@@ -83,6 +83,7 @@ const state = {
   waiting: null,
   waitOnset: 0,
   waitTries: 0,
+  waitCap: 0,
   lastWaitBeat: -Infinity,
   practice: null,
 };
@@ -102,6 +103,10 @@ const timeOfBeat = (b) => state.anchorTime + (b - state.anchorBeat) / beatsPerSe
 const practiceMode = () => state.speed < 0.999 && !!mic?.active;
 // Practice mode stops at the first chord anyway, so a long count-in at 25 % speed would only be in the way.
 const countInBeats = () => (state.speed < 0.999 ? 1 : state.song.beatsPerBar);
+// The microphone needs a moment to judge a note, so in practice mode the cues keep flowing past the
+// line for this long (from the cue's beat) before the clock stops and waits.
+const graceSec = (ev) => (ev.kind === 'pick' ? 0.25 : LESSON.wait) + 0.5;
+const OVERRUN_SEC = LESSON.wait + 0.5;
 
 function ensureAudio() {
   if (!audio) audio = new GuitarAudio();
@@ -142,7 +147,8 @@ function play() {
 
 function pause() {
   if (!state.playing) return;
-  state.anchorBeat = beatAt(clockNow());
+  // Resume an unfinished wait point from its cue rather than skipping it.
+  state.anchorBeat = state.waiting ? state.waiting.beat : beatAt(clockNow());
   state.playing = false;
   state.waiting = null;
   audio?.stopAll();
@@ -467,8 +473,9 @@ function startWait(ev, t) {
   state.waiting = ev;
   state.waitOnset = t - 0.5; // a strum just before the cue arrives still counts
   state.waitTries = 0;
-  state.anchorBeat = ev.beat;
-  state.anchorTime = t;
+  // Let the clock run on for a little while, but never past the next wait point.
+  const next = state.song.right.find((e) => e.wait && e.beat > ev.beat);
+  state.waitCap = Math.min(ev.beat + graceSec(ev) * beatsPerSec(), next ? next.beat : Infinity);
   mic.expect(ev.kind === 'strum' ? ev.frets : null);
   setPracticeStatus(waitPrompt(ev));
 }
@@ -498,9 +505,10 @@ function checkWait(t) {
     }
     state.practice.total++;
     if (state.waitTries === 1) state.practice.firstTry++;
-    anchor(ev.beat);
+    // The clock either never stopped or is held at waitCap from this frame; both just carry on.
+    state.waiting = null;
     state.lastWaitBeat = ev.beat;
-    state.visBeat = ev.beat - 1e-6; // so the strings light up for this strum
+    cues.flashStrings(ev.strings);
     cues.flashJudgement('#3ddc84');
     setPracticeStatus('✓ Nice', 'ok');
     return;
@@ -547,16 +555,14 @@ function frame() {
 
   if (state.playing && practiceMode() && !state.waiting) {
     const ev = song.right.find((e) => e.wait && e.beat > state.lastWaitBeat && e.beat <= beat);
-    if (ev) {
-      startWait(ev, t);
-      beat = ev.beat;
-    }
+    if (ev) startWait(ev, t);
   }
   if (state.waiting) {
-    // Hold the clock on the wait point until it is played right.
-    state.anchorBeat = state.waiting.beat;
-    state.anchorTime = t;
-    beat = state.waiting.beat;
+    // Past the grace period, hold the clock until the wait point is played right.
+    if (beat >= state.waitCap) {
+      state.anchorBeat = state.waitCap;
+      state.anchorTime = t;
+    }
     mic.update(t);
     checkWait(t);
     beat = beatAt(t);
@@ -601,7 +607,7 @@ function frame() {
   }
 
   const lookBeats = state.lookSec * beatsPerSec();
-  cues.update(song, beat, lookBeats, dt);
+  cues.update(song, beat, lookBeats, dt, practising ? OVERRUN_SEC * beatsPerSec() : 0);
   guitar.markStrings(cues.shownShape?.frets);
   guitar.update(dt);
   updateHud(beat);
