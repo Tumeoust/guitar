@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {
   SCALE, fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, TOP_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
 } from './guitar.js';
-import { discTexture, ringTexture, wideLabelTexture } from './textures.js';
+import { discTexture, ringTexture, wideLabelTexture, labelTexture, mutedLabelTexture } from './textures.js';
 import { CHORD_NAMES } from './songs.js';
 
 export const FINGER_COLORS = { 1: '#4cc9f0', 2: '#80ed99', 3: '#ffd166', 4: '#f472b6' };
@@ -16,6 +16,11 @@ export function stringColor(frets, fingers, s) {
   return frets[s] > 0 ? FINGER_COLORS[fingers[s] || 1] : OPEN_COLOR;
 }
 const LANE_WIDTH = 7.4;
+// String names just past the nut, next to the strings themselves, so it is easy to tell which
+// string a dot is on.
+const STRING_LETTERS = ['E', 'A', 'D', 'G', 'B', 'e'];
+const NUT_LABEL_X = -2.7;
+const UNUSED_COLOR = '#8e97aa';
 // How long after a chord's last strum (or pick) has crossed the line the next chord takes its place.
 const LET_GO_BEATS = 0.25;
 
@@ -295,6 +300,18 @@ export class Cues {
     }
   }
 
+  // Each string's name in the colour of the finger that frets it (white when open), crossed out
+  // in red when it must not be played, dimmed when the shape doesn't use it.
+  drawStringNames(shape) {
+    for (let i = 0; i < 6; i++) {
+      const f = shape ? shape.frets[i] : undefined;
+      const tex = f === -1 ? mutedLabelTexture(STRING_LETTERS[i])
+        : labelTexture(STRING_LETTERS[i], f == null ? UNUSED_COLOR : stringColor(shape.frets, shape.fingers, i));
+      const z = stringZ(i, 0) * 1.12;
+      this.marker(tex, NUT_LABEL_X, 0, z, 1.5, shape && f == null ? 0.35 : 1, 23);
+    }
+  }
+
   arrowGeo(len) {
     const key = Math.round(len * 10);
     if (!this.arrowGeos.has(key)) this.arrowGeos.set(key, arrowGeometry(key / 10));
@@ -359,6 +376,7 @@ export class Cues {
 
     this.shownShape = cur ? cur.shape : next?.shape ?? null;
     this.drawLitStrings(this.shownShape, cur ? 1 : 0.3);
+    this.drawStringNames(this.shownShape);
 
     // ---- Right hand ------------------------------------------------------
     const span = HIGHWAY_END - STRIKE_X;

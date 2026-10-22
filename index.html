@@ -68,6 +68,7 @@
       <label class="check"><input id="guide" type="checkbox"> Play-along guitar sound</label>
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
       <label class="check"><input id="loop" type="checkbox"> Loop song</label>
+      <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
       <div class="row">
         <button id="view-player">Player view</button>
         <button id="view-top">Top view</button>
@@ -111,6 +112,12 @@
   <div id="feedback"></div>
 
   <button id="pause-fab" class="icon" title="Pause (Space)">❚❚</button>
+  <button id="zoom-fab" class="icon" title="Magnify the neck (M)">🔍</button>
+
+  <div id="zoom">
+    <div id="zoom-view"><button id="zoom-close" class="icon" title="Close the close-up (M)">✕</button></div>
+    <div id="zoom-fingers"></div>
+  </div>
   <div id="countdown" hidden><span id="countdown-num"></span><div class="muted">Get ready</div></div>
 
   <section id="practice" hidden>
@@ -150,16 +157,18 @@
       <p>Play along on a real guitar. You see the guitar the way you see your own when you look down at it:
         headstock on the left, thickest string closest to you.</p>
       <ul>
-        <li><b>Chord lessons:</b> learn one chord at a time. The microphone listens and tells you when it sounds right, or which string needs fixing.</li>
+        <li><b>Chord lessons:</b> learn one chord at a time. The microphone listens and tells you when it sounds right, or which string needs fixing.
+          Then practise changing between them: at your own pace, against the clock, and finally in time with a metronome.</li>
         <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where. The next shape fades in with a shrinking ring.</li>
         <li><b>Right hand:</b> arrows and dots slide towards the white line over the soundhole. Strum or pick when they reach it.</li>
       </ul>
-      <p class="muted small">Space = play / pause · R = restart · ← / → = jump a bar · drag to move the camera</p>
+      <p class="muted small">Space = play / pause · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera</p>
       <div class="row start-row">
         <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
         <button id="start" class="big">▶ Play songs</button>
       </div>
       <div id="results"></div>
+      <button id="results-next" class="primary" hidden></button>
     </div>
   </div>
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildGuitar } from './guitar.js';
-import { Cues } from './cues.js';
+import { buildGuitar, fretX } from './guitar.js';
+import { Cues, FINGER_COLORS } from './cues.js';
 import { SONGS, CHORDS, CHORD_NAMES, strumEvent } from './songs.js';
 import { GuitarAudio } from './audio.js';
 import { MicJudge, LESSON } from './mic.js';
@@ -87,6 +87,7 @@ const state = {
   waitCap: 0,
   lastWaitBeat: -Infinity,
   practice: null,
+  lessonSong: null, // index in LESSONS while a change drill from the lessons is playing
 };
 let audio = null;
 let mic = null;
@@ -336,12 +337,13 @@ const lessonUi = {
   onResult(runner, result) {
     const status = $('lesson-status');
     if (result.ok) {
-      status.textContent = `✓ That's ${runner.chord}!`;
-      status.className = 'ok';
+      status.textContent = runner.race ? raceMessage(runner, result) : `✓ That's ${runner.chord}!`;
+      status.className = runner.race && result.changeTime != null && !result.fast ? 'slow' : 'ok';
       const played = runner.shape.frets.map((f, i) => (f >= 0 ? i : -1)).filter((i) => i >= 0);
       played.forEach((i) => guitar.pluck(i, 0.8));
       cues.flashStrings(played);
-      cues.flashJudgement('#3ddc84');
+      cues.flashJudgement(status.className === 'slow' ? '#ffb627' : '#3ddc84');
+      renderLessonDots();
     } else {
       status.textContent = runner.feedback(result);
       status.className = 'bad';
@@ -362,7 +364,19 @@ const lessonUi = {
   },
 };
 
-const lessonIndex = () => LESSONS.indexOf(lesson?.lesson);
+const lessonIndex = () => (state.lessonSong ?? LESSONS.indexOf(lesson?.lesson));
+
+function raceMessage(runner, result) {
+  const next = runner.chordAt(runner.index + 1);
+  if (result.changeTime == null) return `✓ ${runner.chord} — now change to ${next} as fast as you can`;
+  const secs = `${result.changeTime.toFixed(1)} s`;
+  if (result.levelUp) {
+    const target = runner.lesson.targets[runner.level + 1];
+    return target ? `✓ ${secs} — level done! Now under ${target} s. Go on with ${next}` : `✓ ${secs} — fast enough!`;
+  }
+  if (result.fast) return `✓ ${runner.chord} in ${secs} — next ${next}`;
+  return `${runner.chord} was right but took ${secs} — aim for under ${runner.target} s. Now ${next}`;
+}
 
 function setSensitivity(value) {
   sensitivity = value;
@@ -374,6 +388,11 @@ function setSensitivity(value) {
 
 async function startLesson(i) {
   clearTimeout(autoNext);
+  if (LESSONS[i].kind === 'song') {
+    startDrill(i);
+    return;
+  }
+  state.lessonSong = null;
   pause();
   $('overlay').hidden = true;
   $('panel').classList.remove('open');
@@ -396,48 +415,82 @@ async function startLesson(i) {
   renderLesson(lesson);
 }
 
+// "In time" lessons are change drills played as songs, with the metronome and at full speed.
+async function startDrill(i) {
+  exitLesson();
+  const idx = SONGS.findIndex((song) => song.id === LESSONS[i].song);
+  $('lesson-select').value = i;
+  select.value = idx;
+  loadSong(SONGS[idx]);
+  state.lessonSong = i;
+  $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length} — ${LESSONS[i].tip}`;
+  $('speed').value = 100;
+  setSpeed(100);
+  $('metro').checked = state.metro = true;
+  $('results').innerHTML = '';
+  await enableMic(); // for grading; the drill plays without it too
+  play();
+}
+
 function exitLesson() {
   clearTimeout(autoNext);
   if (!document.body.classList.contains('lesson-mode')) return;
   lesson = null;
   mic?.expect(null);
-  document.body.classList.remove('lesson-mode');
+  document.body.classList.remove('lesson-mode', 'race');
   $('lesson').hidden = true;
   setView('player');
   loadSong(state.song);
   lastHud = '';
 }
 
+function lessonStepText(runner) {
+  if (runner.race) {
+    const { targets } = runner.lesson;
+    return `Changes under ${runner.target ?? targets[targets.length - 1]} s: ${runner.doneCount} of ${runner.total} · level ${Math.min(runner.level + 1, targets.length)} of ${targets.length}`;
+  }
+  return `Chord ${Math.min(runner.index + 1, runner.total)} of ${runner.total}`;
+}
+
 function renderLesson(runner) {
-  const step = runner.index + 1;
-  $('lesson-step').textContent = `Chord ${step} of ${runner.steps.length}`;
-  $('lesson-tip').textContent = runner.lesson.chords.length > 1
-    ? `${runner.lesson.tip} Now: ${runner.chord}.` : runner.lesson.tip;
-  $('lesson-status').textContent = runner.index === 0
-    ? `Hold ${runner.chord} and strum when you're ready`
-    : `Now ${runner.chord} — strum when you're ready`;
-  $('lesson-status').className = '';
+  if (runner.race) {
+    $('lesson-tip').textContent = `${runner.lesson.tip} Keep changing ${runner.lesson.chords.join(' → ')} and strum each one; the clock runs from one right chord to the next.`;
+    // Keep the verdict on the last change visible; it already names the next chord.
+    if (runner.index === 0) {
+      $('lesson-status').textContent = `Strum ${runner.chord} to start the clock`;
+      $('lesson-status').className = '';
+    }
+  } else {
+    $('lesson-tip').textContent = runner.lesson.chords.length > 1
+      ? `${runner.lesson.tip} Now: ${runner.chord}.` : runner.lesson.tip;
+    $('lesson-status').textContent = runner.index === 0
+      ? `Hold ${runner.chord} and strum when you're ready`
+      : `Now ${runner.chord} — strum when you're ready`;
+    $('lesson-status').className = '';
+  }
   renderLessonDots();
 }
 
 function renderLessonDots() {
-  $('lesson-dots').replaceChildren(...lesson.steps.map((_, k) => {
+  $('lesson-step').textContent = lessonStepText(lesson);
+  $('lesson-dots').replaceChildren(...Array.from({ length: lesson.total }, (_, k) => {
     const dot = document.createElement('span');
-    if (k < lesson.index || lesson.done) dot.className = 'done';
-    else if (k === lesson.index) dot.className = 'now';
+    if (k < lesson.doneCount) dot.className = 'done';
+    else if (k === lesson.doneCount) dot.className = 'now';
     return dot;
   }));
 }
 
 function updateLessonHud() {
-  const hud = `lesson|${lesson.chord}|${lesson.index}|${lesson.done}`;
+  const hud = `lesson|${lesson.chord}|${lesson.index}|${lesson.doneCount}|${lesson.level}|${lesson.done}`;
   if (hud === lastHud) return;
   lastHud = hud;
   $('chord-now').textContent = lesson.chord;
+  $('chord-next').textContent = lesson.race ? lesson.chordAt(lesson.index + 1) : '—';
   $('countin').textContent = '';
-  $('barbeat').textContent = `Chord ${lesson.index + 1} of ${lesson.steps.length}`;
-  const done = lesson.done ? lesson.steps.length : lesson.index;
-  $('progress-fill').style.width = `${(done / lesson.steps.length) * 100}%`;
+  $('barbeat').textContent = lesson.race ? `Best change ${Number.isFinite(lesson.best) ? lesson.best.toFixed(1) + ' s' : '—'}` : lessonStepText(lesson);
+  $('progress-fill').style.width = `${(lesson.doneCount / lesson.total) * 100}%`;
+  document.body.classList.toggle('race', lesson.race);
 }
 
 // Play the chord once so you know what it should sound like; the lesson ignores it.
@@ -556,7 +609,92 @@ function showResults() {
       ? `<h2>${acc}% accuracy</h2><p class="muted">Best streak ${state.stats.best}</p>`
       : '<h2>Song complete</h2>';
   $('start').textContent = 'Play again';
+  const next = state.lessonSong == null ? -1 : state.lessonSong + 1;
+  $('results-next').hidden = next < 0 || next >= LESSONS.length;
+  if (next >= 0 && next < LESSONS.length) $('results-next').textContent = `Next lesson: ${LESSONS[next].title} →`;
   $('overlay').hidden = false;
+}
+
+// ---- Magnifier -------------------------------------------------------------
+// A close-up of the fretting hand's part of the neck, seen from above so the strings are well apart,
+// drawn into the #zoom-view box on top of the full guitar.
+const zoomCam = new THREE.PerspectiveCamera(30, 2.4, 0.5, 400);
+const zoomFocus = { x: 6, w: 20, set: false };
+const ZOOM_TILT = 0.35; // radians from straight down, towards the player
+let magnify = false;
+try { magnify = localStorage.getItem('fretview.magnify') === '1'; } catch { /* storage unavailable */ }
+
+function setMagnify(on) {
+  magnify = on;
+  document.body.classList.toggle('magnify', on);
+  $('magnify').checked = on;
+  try { localStorage.setItem('fretview.magnify', on ? '1' : '0'); } catch { /* storage unavailable */ }
+}
+
+function renderZoom(dt) {
+  const r = $('zoom-view').getBoundingClientRect();
+  if (r.width < 20 || r.height < 20) return;
+  // Frame the frets the shape uses; in first position also the nut, where the open / muted
+  // markers and the string names are.
+  const held = cues.shownShape?.frets.filter((f) => f > 0) ?? [];
+  const lo = held.length ? Math.min(...held) : 1, hi = held.length ? Math.max(...held) : 4;
+  const x0 = lo <= 3 ? -3.8 : fretX(lo - 1) - 1.5;
+  const x1 = fretX(Math.max(hi, lo <= 3 ? 4 : lo + 2)) + 1.2;
+  const k = zoomFocus.set ? 1 - Math.exp(-dt * 5) : 1;
+  zoomFocus.x += ((x0 + x1) / 2 - zoomFocus.x) * k;
+  zoomFocus.w += (x1 - x0 - zoomFocus.w) * k;
+  zoomFocus.set = true;
+
+  const aspect = r.width / r.height;
+  const tan = Math.tan(THREE.MathUtils.degToRad(zoomCam.fov / 2));
+  // Across the strings: the chord name above the high e down to the fret numbers below the low E.
+  const d = Math.max(10.5 / (2 * tan), zoomFocus.w / (2 * tan * aspect));
+  zoomCam.aspect = aspect;
+  zoomCam.updateProjectionMatrix();
+  zoomCam.position.set(zoomFocus.x, d * Math.cos(ZOOM_TILT), -0.4 + d * Math.sin(ZOOM_TILT));
+  zoomCam.lookAt(zoomFocus.x, 0, -0.4);
+
+  const h = window.innerHeight;
+  renderer.setScissorTest(true);
+  renderer.setScissor(r.left, h - r.bottom, r.width, r.height);
+  renderer.setViewport(r.left, h - r.bottom, r.width, r.height);
+  renderer.render(scene, zoomCam);
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, window.innerWidth, h);
+}
+
+// Under the close-up, the shape in words: which finger goes on which string and fret.
+let lastFingers = null;
+function renderFingers(shape) {
+  const key = shape ? `${shape.frets}|${shape.fingers}` : '';
+  if (key === lastFingers) return;
+  lastFingers = key;
+  if (!shape) {
+    $('zoom-fingers').replaceChildren();
+    return;
+  }
+  const byFinger = new Map(), open = [], muted = [];
+  shape.frets.forEach((f, s) => {
+    if (f > 0) {
+      const finger = shape.fingers[s] || 1;
+      const k = `${finger}:${f}`;
+      if (!byFinger.has(k)) byFinger.set(k, { finger, fret: f, strings: [] });
+      byFinger.get(k).strings.push(stringName(s));
+    } else if (f === 0) open.push(stringName(s));
+    else if (f === -1) muted.push(stringName(s));
+  });
+  const names = (list) => list.join(list.length > 2 ? ', ' : ' and ').replace(/, ([^,]*)$/, ' and $1');
+  const item = (html) => {
+    const el = document.createElement('span');
+    el.innerHTML = html;
+    return el;
+  };
+  const items = [...byFinger.values()].sort((a, b) => a.finger - b.finger).map(({ finger, fret, strings }) => item(
+    `<i class="dot" style="--c:${FINGER_COLORS[finger]}">${finger}</i> <b>${names(strings)}</b> string${strings.length > 1 ? 's' : ''}, fret ${fret}`,
+  ));
+  if (open.length) items.push(item(`<i class="sym ring">○</i> open: ${names(open)}`));
+  if (muted.length) items.push(item(`<i class="sym x">✕</i> don't play: ${names(muted)}`));
+  $('zoom-fingers').replaceChildren(...items);
 }
 
 // ---- Main loop -------------------------------------------------------------
@@ -586,8 +724,7 @@ function frame() {
     guitar.markStrings(cues.shownShape?.frets);
     guitar.update(dt);
     updateLessonHud();
-    controls.update();
-    renderer.render(scene, camera);
+    render(dt);
     return;
   }
 
@@ -652,8 +789,16 @@ function frame() {
   guitar.markStrings(cues.shownShape?.frets);
   guitar.update(dt);
   updateHud(beat);
+  render(dt);
+}
+
+function render(dt) {
   controls.update();
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
   renderer.render(scene, camera);
+  renderFingers(cues.shownShape);
+  if (magnify) renderZoom(dt);
 }
 
 function midiNameWithCents(hz) {
@@ -663,12 +808,32 @@ function midiNameWithCents(hz) {
 }
 
 // ---- UI wiring -------------------------------------------------------------
+// Fills a <select> with options grouped under <optgroup>s; groupOf(item) names the group.
+function fillGrouped(el, items, groupOf, label) {
+  const groups = new Map();
+  items.forEach((item, i) => {
+    const name = groupOf(item);
+    if (!groups.has(name)) {
+      const g = document.createElement('optgroup');
+      g.label = name;
+      el.append(g);
+      groups.set(name, g);
+    }
+    groups.get(name).append(new Option(label(item, i), i));
+  });
+}
+
 const select = $('song-select');
-SONGS.forEach((s, i) => select.add(new Option(s.title, i)));
-select.addEventListener('change', () => { loadSong(SONGS[select.value]); select.blur(); });
+fillGrouped(select, SONGS, (song) => (song.drill ? 'Chord-change drills' : 'Songs'), (song) => song.title);
+select.addEventListener('change', () => {
+  state.lessonSong = null;
+  loadSong(SONGS[select.value]);
+  select.blur();
+});
 
 const lessonSelect = $('lesson-select');
-LESSONS.forEach((l, i) => lessonSelect.add(new Option(`${i + 1}. ${l.title}`, i)));
+fillGrouped(lessonSelect, LESSONS, (l) => l.group, (l, i) => `${i + 1}. ${l.title}`);
+$('results-next').addEventListener('click', () => startLesson(state.lessonSong + 1));
 $('lesson-start').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
 $('start-lessons').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
 $('lesson-hear').addEventListener('click', hearChord);
@@ -718,6 +883,10 @@ $('metro').addEventListener('change', (e) => { state.metro = e.target.checked; }
 $('loop').addEventListener('change', (e) => { state.loop = e.target.checked; });
 $('view-player').addEventListener('click', () => setView('player'));
 $('view-top').addEventListener('click', () => setView('top'));
+$('magnify').addEventListener('change', (e) => setMagnify(e.target.checked));
+$('zoom-fab').addEventListener('click', () => setMagnify(!magnify));
+$('zoom-close').addEventListener('click', () => setMagnify(false));
+setMagnify(magnify);
 $('panel-toggle').addEventListener('click', () => $('panel').classList.toggle('open'));
 $('mic-toggle').addEventListener('click', toggleMic);
 $('check-pitch').addEventListener('change', (e) => { if (mic) mic.checkPitch = e.target.checked; });
@@ -734,6 +903,10 @@ $('progress').addEventListener('click', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (e.code === 'KeyM') {
+    setMagnify(!magnify);
+    return;
+  }
   if (lesson || document.body.classList.contains('lesson-mode')) {
     if (e.code === 'Escape') $('lesson-exit').click();
     return;

@@ -8,8 +8,9 @@ The game only shows what each hand has to do:
 
 - **Left hand.** Coloured dots on the fretboard show which finger goes where:
   1 = index (blue), 2 = middle (green), 3 = ring (yellow), 4 = pinky (pink).
-  ○ at the nut means play the string open, and a red ✕ over the string's letter by its tuning peg means don't
-  play it. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
+  ○ at the nut means play the string open, and a red ✕ over the string's letter means don't play it.
+  Each string's letter (E A D G B e) also sits right next to the nut, in the colour of the finger that frets it.
+  Fret numbers 1–5 are written along the low E side. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
   Colour always means a finger: each string to be played glows in the colour of the finger fretting it,
   from the finger to the bridge. Open strings glow white.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
@@ -21,10 +22,26 @@ The game only shows what each hand has to do:
   - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
   - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
 
+## Magnifier
+
+**🔍 Magnify the neck** (in the settings, the 🔍 button, or the M key) adds a close-up of the fretting hand's
+part of the neck in the top-left corner, seen from above so the strings are well apart. It follows the chord
+shape along the neck. Below it, the shape is spelled out: which finger goes on which string and fret, which
+strings ring open, and which not to play. The setting is remembered.
+
 ## Chord lessons
 
-The lessons teach one chord at a time with no time pressure, then drill changes between chords:
-Em, Am, E, A, D, C, G and Dm, then Em ↔ Am, Am ↔ E, A ↔ D, and G → C → D.
+The lessons teach one chord at a time with no time pressure (Em, Am, E, A, D, C, G and Dm), then build up the
+changes between them in three steps, grouped by the song they lead to:
+
+1. **Changing X ↔ Y**: change at your own pace. The lesson waits until it hears each chord right.
+2. **Quick changes X ↔ Y**: against the clock. The clock runs from one right chord to the next, and the next
+   chord is already shown faded on the neck. Four changes under 3 s finish level 1, then under 2 s, then under 1.5 s.
+3. **In time: X ↔ Y**: a change drill played as a song with the metronome. It starts with one strum per bar,
+   so there are three silent beats to move, then two, three and four strums per bar.
+
+The drills are also in the song list under *Chord-change drills*. After a drill, the results screen offers the
+next lesson.
 The chord to hold is shown on the neck. The lesson listens through the device microphone and moves on only
 when it hears the chord played correctly. When a strum is wrong, it says what to fix:
 

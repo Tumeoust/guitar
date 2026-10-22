@@ -180,9 +180,11 @@ export function buildGuitar() {
     d.position.set(x, 0.005, z);
     root.add(d);
   };
-  for (const n of [3, 5, 7, 9, 12, 15, 17]) {
+  // Inlay dots, and fret numbers by the low E: every fret in first position, then at the dots.
+  const DOTS = [3, 5, 7, 9, 12, 15, 17];
+  for (const n of [1, 2, 3, 4, 5, 7, 9, 12, 15, 17]) {
     const x = (fretX(n - 1) + fretX(n)) / 2;
-    if (n === 12) { addDot(x, 1.2); addDot(x, -1.2); } else addDot(x, 0);
+    if (n === 12) { addDot(x, 1.2); addDot(x, -1.2); } else if (DOTS.includes(n)) addDot(x, 0);
 
     const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(String(n)), transparent: true, depthWrite: false }));
     label.scale.setScalar(2);

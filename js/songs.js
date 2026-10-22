@@ -26,6 +26,9 @@ const STRUMS = {
   quarters: [[0, 'D'], [1, 'D'], [2, 'D'], [3, 'D']],
   campfire: [[0, 'D'], [1, 'D'], [1.5, 'U'], [2.5, 'U'], [3, 'D'], [3.5, 'U']],
   waltz: [[0, 'D'], [1, 'D'], [2, 'D']],
+  // Change drills in 4/4: strum part of the bar and use the silent beats to move to the next chord.
+  two: [[0, 'D'], [1, 'D']],
+  three: [[0, 'D'], [1, 'D'], [2, 'D']],
 };
 
 function playedStrings(frets) {
@@ -96,6 +99,18 @@ function arpeggioSong(meta, bars) {
   return { ...meta, left, right, length: beat };
 }
 
+// Chord-change drill: the same changes four times over, with less time to move each round.
+// One strum per bar (three free beats to change), then two, then three, then all four.
+function drillSong(meta, chords) {
+  const rounds = chords.length > 2 ? 1 : 2;
+  const progression = [];
+  for (const pattern of ['whole', 'two', 'three', 'quarters']) {
+    for (let r = 0; r < rounds; r++) for (const c of chords) progression.push([c, pattern]);
+  }
+  progression.push([chords[0], 'whole']);
+  return { ...strumSong({ bpm: 60, beatsPerBar: 4, ...meta }, progression), drill: true };
+}
+
 function warmup() {
   const notes = [];
   for (let s = 0; s < 6; s++) for (let f = 1; f <= 4; f++) notes.push([s, f, f, 1]);
@@ -151,4 +166,10 @@ export const SONGS = [
     [['Am', 1], ['C', 1], ['D', 2], ['F', 2], ['Am', 1], ['C', 1], ['E', 0], ['E', 0],
      ['Am', 1], ['C', 1], ['D', 2], ['F', 2], ['Am', 1], ['E', 0], ['Am', 1], ['Am', 1]],
   ),
+  drillSong({ id: 'drill-em-am', title: 'Change drill: Em ↔ Am', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Em', 'Am']),
+  drillSong({ id: 'drill-g-c', title: 'Change drill: G ↔ C', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'C']),
+  drillSong({ id: 'drill-g-d', title: 'Change drill: G ↔ D', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'D']),
+  drillSong({ id: 'drill-g-c-d', title: 'Change drill: G – C – G – D', subtitle: 'The changes in Amazing Grace, with fewer free beats each round' }, ['G', 'C', 'G', 'D']),
+  drillSong({ id: 'drill-campfire', title: 'Change drill: G – Em – C – D', subtitle: 'The changes in Campfire Strum, with fewer free beats each round' }, ['G', 'Em', 'C', 'D']),
+  drillSong({ id: 'drill-am-e', title: 'Change drill: Am ↔ E', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Am', 'E']),
 ];

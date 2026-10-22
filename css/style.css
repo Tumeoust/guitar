@@ -116,6 +116,25 @@ input[type=range] { accent-color: var(--accent); }
 .stats { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; margin-top: 8px; font-variant-numeric: tabular-nums; }
 .stats b { text-align: right; }
 
+/* Magnified neck: the 3D view draws the close-up into #zoom-view's box. */
+#zoom { display: none; position: fixed; left: 12px; top: 96px; width: min(50vw, 600px); pointer-events: none; }
+body.magnify #zoom { display: block; }
+#zoom-view {
+  position: relative; aspect-ratio: 2.4; max-height: 40vh;
+  border: 2px solid rgba(255, 255, 255, 0.35); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+}
+#zoom-close { position: absolute; top: 4px; right: 4px; pointer-events: auto; background: rgba(0, 0, 0, 0.5); }
+#zoom-fingers:not(:empty) {
+  display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; padding: 6px 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; font-size: 13px;
+}
+#zoom-fingers span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+#zoom-fingers i { font-style: normal; }
+#zoom-fab { position: fixed; top: 66px; right: 12px; z-index: 5; }
+body.playing #zoom-fab { right: 20px; }
+body:has(#panel.open) #zoom-fab, body.magnify #zoom-fab { display: none; }
+#results-next { margin-top: 12px; }
+
 /* Legend */
 #legend {
   position: fixed; left: 12px; bottom: 12px;
@@ -178,7 +197,7 @@ input[type=range] { accent-color: var(--accent); }
 #lesson-dots span.now { background: var(--accent); box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.3); }
 #lesson-status { font-size: 18px; font-weight: 700; min-height: 1.4em; }
 #lesson-status.ok { color: #3ddc84; }
-#lesson-status.bad { color: #ffb627; }
+#lesson-status.bad, #lesson-status.slow { color: #ffb627; }
 #lesson .meter { margin: 0; flex: 1; }
 .lesson-mic { display: flex; align-items: center; gap: 14px; }
 .lesson-mic label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
@@ -186,6 +205,7 @@ input[type=range] { accent-color: var(--accent); }
 #lesson-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
 @media (max-width: 1250px) { body.lesson-mode #legend { display: none; } }
 body.lesson-mode .chords > div:nth-child(2) { display: none; }
+body.lesson-mode.race .chords > div:nth-child(2) { display: block; }
 .start-row { justify-content: center; margin-top: 8px; }
 .start-row button { flex: 0 1 auto; }
 
@@ -224,6 +244,7 @@ body.lesson-mode .chords > div:nth-child(2) { display: none; }
   body:has(#panel.open) #hud { right: 70px; }
   #panel.open { left: 12px; width: auto; bottom: 12px; }
   #legend { display: none; }
+  #zoom { top: 140px; width: min(70vw, 520px); }
 }
 
 @media (max-height: 500px) {
@@ -234,4 +255,6 @@ body.lesson-mode .chords > div:nth-child(2) { display: none; }
   #chord-now { font-size: 20px; }
   #countin { font-size: 16px; }
   #panel.open { top: 12px; max-height: none; }
+  #zoom { top: 66px; width: min(55vw, 480px); }
+  #zoom-view { max-height: 46vh; }
 }
