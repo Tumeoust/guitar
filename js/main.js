@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildGuitar } from './guitar.js';
 import { Cues } from './cues.js';
-import { SONGS, CHORDS, strumEvent } from './songs.js';
+import { SONGS, CHORDS, CHORD_NAMES, strumEvent } from './songs.js';
 import { GuitarAudio } from './audio.js';
-import { MicJudge } from './mic.js';
+import { MicJudge, LESSON } from './mic.js';
 import { midiName } from './music.js';
-import { LESSONS, LessonRunner } from './lessons.js';
+import { LESSONS, LessonRunner, CANDIDATES, chordFeedback, stringName } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -79,6 +79,12 @@ const state = {
   visBeat: 0,
   judgeIndex: 0,
   stats: null,
+  // Practice mode (below 100 % speed): the clock stops at each wait point until it is played right.
+  waiting: null,
+  waitOnset: 0,
+  waitTries: 0,
+  lastWaitBeat: -Infinity,
+  practice: null,
 };
 let audio = null;
 let mic = null;
@@ -93,7 +99,9 @@ const clockNow = () => (audio ? audio.ctx.currentTime : performance.now() / 1000
 const beatsPerSec = () => (state.song.bpm / 60) * state.speed;
 const beatAt = (t) => (state.playing ? state.anchorBeat + (t - state.anchorTime) * beatsPerSec() : state.anchorBeat);
 const timeOfBeat = (b) => state.anchorTime + (b - state.anchorBeat) / beatsPerSec();
-const countInBeats = () => state.song.beatsPerBar;
+const practiceMode = () => state.speed < 0.999 && !!mic?.active;
+// Practice mode stops at the first chord anyway, so a long count-in at 25 % speed would only be in the way.
+const countInBeats = () => (state.speed < 0.999 ? 1 : state.song.beatsPerBar);
 
 function ensureAudio() {
   if (!audio) audio = new GuitarAudio();
@@ -102,6 +110,7 @@ function ensureAudio() {
 
 function resetStats() {
   state.stats = { perfect: 0, good: 0, wrong: 0, miss: 0, streak: 0, best: 0 };
+  state.practice = { total: 0, firstTry: 0 };
   renderStats();
 }
 
@@ -112,10 +121,15 @@ function anchor(beat) {
   state.visBeat = beat;
   state.judgeIndex = state.song.right.findIndex((ev) => ev.beat >= beat);
   if (state.judgeIndex < 0) state.judgeIndex = state.song.right.length;
+  state.waiting = null;
+  state.lastWaitBeat = beat - 1e-6;
 }
 
 function play() {
   ensureAudio();
+  if (state.speed < 0.999 && !mic?.active) {
+    enableMic().then((err) => err && setPracticeStatus(`${err}. The song won't wait for you.`, 'bad'));
+  }
   $('overlay').hidden = true;
   if (state.anchorBeat >= state.song.length) {
     state.anchorBeat = -countInBeats();
@@ -130,6 +144,7 @@ function pause() {
   if (!state.playing) return;
   state.anchorBeat = beatAt(clockNow());
   state.playing = false;
+  state.waiting = null;
   audio?.stopAll();
   updatePlayButton();
 }
@@ -158,6 +173,9 @@ function loadSong(song) {
 function setSpeed(pct) {
   const b = beatAt(clockNow());
   state.speed = pct / 100;
+  state.waiting = null;
+  document.querySelectorAll('.speeds button').forEach((el) => el.classList.toggle('on', Number(el.dataset.speed) === pct));
+  if (state.speed < 0.999 && state.playing && !mic?.active) enableMic();
   if (state.playing) {
     state.anchorBeat = b;
     state.anchorTime = clockNow();
@@ -374,11 +392,10 @@ function renderLessonDots() {
 }
 
 function updateLessonHud() {
-  const hud = `lesson|${lesson.chord}|${lesson.nextChord}|${lesson.index}|${lesson.done}`;
+  const hud = `lesson|${lesson.chord}|${lesson.index}|${lesson.done}`;
   if (hud === lastHud) return;
   lastHud = hud;
   $('chord-now').textContent = lesson.chord;
-  $('chord-next').textContent = lesson.nextChord || '—';
   $('countin').textContent = '';
   $('barbeat').textContent = `Chord ${lesson.index + 1} of ${lesson.steps.length}`;
   const done = lesson.done ? lesson.steps.length : lesson.index;
@@ -430,11 +447,74 @@ function describe(shape) {
   return `String ${6 - s} · ${f === 0 ? 'open' : 'fret ' + f}`;
 }
 
+// ---- Practice mode (waits for each chord) ----------------------------------
+function setPracticeStatus(text, kind = '') {
+  $('practice-status').textContent = text;
+  $('practice-status').className = kind;
+}
+
+function waitPrompt(ev) {
+  if (ev.kind === 'pick') {
+    const s = ev.strings[0], f = ev.frets[s];
+    return `Pick the ${stringName(s)} string${f > 0 ? `, fret ${f}` : ' (open)'}`;
+  }
+  const seg = state.song.left.find((l) => l.beat <= ev.beat && ev.beat < l.beat + l.dur);
+  const name = seg?.name ? CHORD_NAMES[seg.name] || seg.name : 'the chord';
+  return `Strum ${name} to continue`;
+}
+
+function startWait(ev, t) {
+  state.waiting = ev;
+  state.waitOnset = t - 0.5; // a strum just before the cue arrives still counts
+  state.waitTries = 0;
+  state.anchorBeat = ev.beat;
+  state.anchorTime = t;
+  mic.expect(ev.kind === 'strum' ? ev.frets : null);
+  setPracticeStatus(waitPrompt(ev));
+}
+
+function checkWait(t) {
+  const ev = state.waiting;
+  const ready = ev.kind === 'pick' ? 0.25 : LESSON.wait;
+  for (const f of mic.frames) {
+    if (!f.onset || f.t <= state.waitOnset) continue;
+    if (t - f.t < ready) return; // still listening to this strum
+    state.waitOnset = f.t;
+    let ok, why;
+    if (ev.kind === 'pick') {
+      ok = mic.pitchMatches(ev, f.t);
+      why = 'Not that note — check the string and the fret, then pick again.';
+    } else {
+      const r = mic.analyzeChord(f.t, ev.frets, CANDIDATES);
+      if (!r || !r.musical) continue; // bumps and noises
+      ok = r.ok;
+      why = !ok && chordFeedback({ frets: ev.frets, fingers: ev.fingers }, r);
+    }
+    state.waitTries++;
+    if (!ok) {
+      setPracticeStatus(why, 'bad');
+      cues.flashJudgement('#ffb627');
+      return;
+    }
+    state.practice.total++;
+    if (state.waitTries === 1) state.practice.firstTry++;
+    anchor(ev.beat);
+    state.lastWaitBeat = ev.beat;
+    state.visBeat = ev.beat - 1e-6; // so the strings light up for this strum
+    cues.flashJudgement('#3ddc84');
+    setPracticeStatus('✓ Nice', 'ok');
+    return;
+  }
+}
+
 function showResults() {
   const acc = accuracy();
-  $('results').innerHTML = mic?.active && acc != null
-    ? `<h2>${acc}% accuracy</h2><p class="muted">Best streak ${state.stats.best}</p>`
-    : '<h2>Song complete</h2>';
+  const p = state.practice;
+  $('results').innerHTML = p.total
+    ? `<h2>Song complete</h2><p class="muted">${p.firstTry} of ${p.total} right on the first try</p>`
+    : mic?.active && acc != null
+      ? `<h2>${acc}% accuracy</h2><p class="muted">Best streak ${state.stats.best}</p>`
+      : '<h2>Song complete</h2>';
   $('start').textContent = 'Play again';
   $('overlay').hidden = false;
 }
@@ -457,11 +537,29 @@ function frame() {
     $('lesson-level').style.width = `${Math.min(100, mic.level * 400)}%`;
     const view = lesson.view(t);
     cues.update(view.song, view.beat, view.lookBeats, dt);
+    guitar.markStrings(cues.shownShape?.frets);
     guitar.update(dt);
     updateLessonHud();
     controls.update();
     renderer.render(scene, camera);
     return;
+  }
+
+  if (state.playing && practiceMode() && !state.waiting) {
+    const ev = song.right.find((e) => e.wait && e.beat > state.lastWaitBeat && e.beat <= beat);
+    if (ev) {
+      startWait(ev, t);
+      beat = ev.beat;
+    }
+  }
+  if (state.waiting) {
+    // Hold the clock on the wait point until it is played right.
+    state.anchorBeat = state.waiting.beat;
+    state.anchorTime = t;
+    beat = state.waiting.beat;
+    mic.update(t);
+    checkWait(t);
+    beat = beatAt(t);
   }
 
   if (state.playing) {
@@ -492,15 +590,19 @@ function frame() {
     }
   }
 
+  const practising = state.playing && practiceMode();
+  $('practice').hidden = !practising;
   if (mic?.active) {
-    mic.update(t);
-    if (state.playing) judgeEvents(t);
+    if (!state.waiting) mic.update(t);
+    if (state.playing && !practising) judgeEvents(t);
+    if (practising) $('practice-level').style.width = `${Math.min(100, mic.level * 400)}%`;
     $('mic-level').style.width = `${Math.min(100, mic.level * 400)}%`;
     $('tuner').textContent = mic.pitch ? midiNameWithCents(mic.pitch) : '—';
   }
 
   const lookBeats = state.lookSec * beatsPerSec();
   cues.update(song, beat, lookBeats, dt);
+  guitar.markStrings(cues.shownShape?.frets);
   guitar.update(dt);
   updateHud(beat);
   controls.update();
@@ -550,6 +652,12 @@ $('restart').addEventListener('click', () => {
   restart();
 });
 $('speed').addEventListener('input', (e) => setSpeed(Number(e.target.value)));
+document.querySelectorAll('.speeds button').forEach((el) => {
+  el.addEventListener('click', () => {
+    $('speed').value = el.dataset.speed;
+    setSpeed(Number(el.dataset.speed));
+  });
+});
 $('look').addEventListener('input', (e) => {
   state.lookSec = Number(e.target.value);
   $('look-val').textContent = `${state.lookSec.toFixed(1)} s`;

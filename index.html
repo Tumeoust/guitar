@@ -50,8 +50,17 @@
         <button id="play" class="primary">▶ Play</button>
         <button id="restart">⟲ Restart</button>
       </div>
+      <div class="field">Practice speed
+        <div class="row speeds">
+          <button data-speed="25">25%</button>
+          <button data-speed="50">50%</button>
+          <button data-speed="75">75%</button>
+          <button data-speed="100" class="on">100%</button>
+        </div>
+        <span class="small muted">Below 100% the song waits until you play each chord or note right (uses the microphone).</span>
+      </div>
       <label class="field">Speed <span id="speed-val">100%</span>
-        <input id="speed" type="range" min="40" max="120" step="5" value="100">
+        <input id="speed" type="range" min="25" max="120" step="5" value="100">
       </label>
       <label class="field">Look-ahead <span id="look-val">2.4 s</span>
         <input id="look" type="range" min="1.2" max="4" step="0.2" value="2.4">
@@ -100,6 +109,16 @@
   </div>
 
   <div id="feedback"></div>
+
+  <section id="practice" hidden>
+    <div id="practice-status"></div>
+    <div class="lesson-mic">
+      <div class="meter" title="Microphone level"><div id="practice-level"></div></div>
+      <label class="small muted" title="Lower it if bumps and noises get picked up">Mic sensitivity
+        <input class="sensitivity" type="range" min="1" max="10" step="1" value="5">
+      </label>
+    </div>
+  </section>
 
   <section id="lesson" hidden>
     <div class="lesson-head">

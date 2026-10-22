@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { labelTexture } from './textures.js';
+import { labelTexture, mutedLabelTexture } from './textures.js';
 
 // World layout (units ≈ cm):
 //   x runs along the strings: nut at x = 0, saddle at x = SCALE, headstock at x < 0.
@@ -225,7 +225,7 @@ export function buildGuitar() {
 
   // String names next to the tuning pegs, low E to high e.
   const STRING_LABELS = ['E', 'A', 'D', 'G', 'B', 'e'];
-  postTops.forEach((p, i) => {
+  const stringLabels = postTops.map((p, i) => {
     const label = new THREE.Sprite(new THREE.SpriteMaterial({
       map: labelTexture(STRING_LABELS[i], '#f2f4f8'), transparent: true, depthTest: false, depthWrite: false,
     }));
@@ -233,6 +233,7 @@ export function buildGuitar() {
     label.scale.setScalar(1.7);
     label.position.copy(p).add(new THREE.Vector3(0, 1.1, 0));
     root.add(label);
+    return label;
   });
 
   // Strings
@@ -271,6 +272,19 @@ export function buildGuitar() {
     // Steady glow for strings that matter right now (0..1).
     setGlow(i, amount) {
       strings[i].glow = amount;
+    },
+    // Show at the tuning pegs which strings to play: muted strings (-1) get a red ✕, strings the
+    // shape doesn't use (null) are dimmed.
+    markStrings(frets) {
+      stringLabels.forEach((label, i) => {
+        const f = frets ? frets[i] : 0;
+        const tex = f === -1 ? mutedLabelTexture(STRING_LABELS[i]) : labelTexture(STRING_LABELS[i], '#f2f4f8');
+        if (label.material.map !== tex) {
+          label.material.map = tex;
+          label.material.needsUpdate = true;
+        }
+        label.material.opacity = f == null ? 0.35 : 1;
+      });
     },
     update(dt) {
       t += dt;

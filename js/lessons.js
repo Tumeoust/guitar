@@ -32,7 +32,7 @@ export const LESSONS = [
 
 const STRING_NAMES = ['low E', 'A', 'D', 'G', 'B', 'high e'];
 const FINGER_NAMES = { 1: 'index', 2: 'middle', 3: 'ring', 4: 'pinky' };
-const CANDIDATES = Object.fromEntries(Object.entries(CHORDS).map(([name, c]) => [name, c.frets]));
+export const CANDIDATES = Object.fromEntries(Object.entries(CHORDS).map(([name, c]) => [name, c.frets]));
 const REFRACTORY = 0.6; // one strum can trigger several onsets
 
 export function stringName(s) {
@@ -56,10 +56,6 @@ export class LessonRunner {
 
   get chord() { return this.steps[this.index]; }
   get shape() { return CHORDS[this.chord]; }
-  get nextChord() {
-    const next = this.steps[this.index + 1];
-    return next && next !== this.chord ? next : null;
-  }
 
   // Don't listen for a while, e.g. while the "Hear it" example rings out.
   mute(until) {
@@ -103,29 +99,33 @@ export class LessonRunner {
     }
   }
 
-  // Explain a failed strum in plain words, most specific problem first.
   feedback(result) {
-    const { frets, fingers } = this.shape;
-    if (result.missing.length) {
-      const s = result.missing[0];
-      if (frets[s] === 0) {
-        return `The open ${STRING_NAMES[s]} string isn't ringing — make sure no finger is touching it.`;
-      }
-      return `The ${STRING_NAMES[s]} string isn't ringing clearly. Press it firmly with your ${FINGER_NAMES[fingers[s]] || 'finger'}, just behind the fret, using your fingertip.`;
-    }
-    if (result.rival && result.rivalSim > result.sim) {
-      return `That sounded more like ${result.rival}. Check each finger against the dots.`;
-    }
-    return 'Not quite — check the finger positions and strum again.';
+    return chordFeedback(this.shape, result);
   }
 
-  // Data for the 3D view: the shape to hold now, the next one, and a strum cue every 2 seconds.
+  // Data for the 3D view: only the shape to hold now (a preview of the next one just gets in the
+  // way), and a strum cue every 2 seconds.
   view(t) {
     const shape = this.shape;
     const left = [{ beat: t - 0.5, dur: 1, name: this.chord, shape }];
-    if (this.nextChord) left.push({ beat: t + 1.2, dur: 1, name: this.nextChord, shape: CHORDS[this.nextChord] });
     const right = [];
     for (let k = Math.floor(t / 2) * 2; k < t + 4; k += 2) right.push(strumEvent(shape, k + 0.5, 'D'));
     return { song: { beatsPerBar: 2, left, right }, beat: t, lookBeats: 2 };
   }
+}
+
+// Explain a failed strum in plain words, most specific problem first.
+export function chordFeedback(shape, result) {
+  const { frets, fingers } = shape;
+  if (result.missing.length) {
+    const s = result.missing[0];
+    if (frets[s] === 0) {
+      return `The open ${STRING_NAMES[s]} string isn't ringing — make sure no finger is touching it.`;
+    }
+    return `The ${STRING_NAMES[s]} string isn't ringing clearly. Press it firmly with your ${FINGER_NAMES[fingers[s]] || 'finger'}, just behind the fret, using your fingertip.`;
+  }
+  if (result.rival && result.rivalSim > result.sim) {
+    return `That sounded more like ${result.rival}. Check each finger against the dots.`;
+  }
+  return 'Not quite — check the finger positions and strum again.';
 }

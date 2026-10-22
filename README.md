@@ -8,7 +8,8 @@ The game only shows what each hand has to do:
 
 - **Left hand.** Coloured dots on the fretboard show which finger goes where:
   1 = index (blue), 2 = middle (green), 3 = ring (yellow), 4 = pinky (pink).
-  ○ at the nut means play the string open, and ✕ means don't play it.
+  ○ at the nut means play the string open, and ✕ means don't play it; the string's letter by its tuning peg
+  turns red as well. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
   Colour always means a finger: each string to be played glows in the colour of the finger fretting it,
   from the finger to the bridge. Open strings glow white.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
@@ -39,6 +40,10 @@ How the check works (`MicJudge.analyzeChord` in `js/mic.js`):
 ## Songs
 
 The game is silent by default. The play-along guitar sound can be switched on in the settings.
+
+**Practice speeds.** Every song can be played at 25 %, 50 %, 75 % or 100 % speed. Below 100 %, the song stops at
+the start of each bar and waits until the microphone hears the chord played right; the same feedback as in the
+lessons tells you what to fix. In single-note songs it waits for every note. At 100 % it plays straight through.
 
 An optional **microphone mode** listens to your guitar and grades each strum or pick as
 *Perfect*, *Good*, *Wrong notes* or *Miss*:
@@ -82,6 +87,7 @@ The settings panel folds away while a song plays, and comes back when you pause.
 
 ## Songs
 
+- Amazing Grace (traditional): G, C and D, three down-strums per bar. A good first song after the lessons.
 - Finger Warm-up: one finger per fret, frets 1–4 across all strings.
 - Two-Chord Strum: Em / Am, downstrokes.
 - Campfire Strum: G – Em – C – D with a D DU UDU pattern.

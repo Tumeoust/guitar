@@ -59,6 +59,26 @@ function arrowGeometry(len) {
   return geo;
 }
 
+// Fingers on neighbouring strings at the same fret (Em, A, D...) would hide each other, so spread
+// them out between the fret wires like a real hand does: lower finger numbers further back.
+function staggerOf(frets, fingers, i) {
+  const f = frets[i];
+  // Strings at most two apart count as neighbours: from this angle they still overlap on screen.
+  const near = (s) => frets[s] === f && fingers[s] !== fingers[i];
+  let lo = i, hi = i;
+  for (;;) {
+    if (near(lo - 1)) lo -= 1; else if (near(lo - 2)) lo -= 2; else break;
+  }
+  for (;;) {
+    if (near(hi + 1)) hi += 1; else if (near(hi + 2)) hi += 2; else break;
+  }
+  if (lo === hi) return null;
+  const group = [];
+  for (let s = lo; s <= hi; s++) if (frets[s] === f) group.push(fingers[s]);
+  const rank = [...group].sort((a, b) => a - b).indexOf(fingers[i]);
+  return 0.3 + (0.55 * rank) / (group.length - 1);
+}
+
 function findSegments(left, beat) {
   let cur = null, next = null;
   for (const seg of left) {
@@ -184,8 +204,9 @@ export class Cues {
     return s;
   }
 
-  fingerPos(i, fret) {
-    const x = fingerX(fret);
+  // stagger: where between the fret wires the fingertip sits (0 = previous wire, 1 = this one).
+  fingerPos(i, fret, stagger = null) {
+    const x = stagger == null ? fingerX(fret) : fretX(fret - 1) + (fretX(fret) - fretX(fret - 1)) * stagger;
     return new THREE.Vector3(x, STRING_Y + 0.3, stringZ(i, Math.max(x, 0)));
   }
 
@@ -205,7 +226,7 @@ export class Cues {
       } else {
         const finger = fingers[i] || 1;
         const color = FINGER_COLORS[finger];
-        const p = this.fingerPos(i, f);
+        const p = this.fingerPos(i, f, staggerOf(frets, fingers, i));
         this.marker(discTexture(color, String(finger)), p.x, p.y, p.z, MARKER_SIZE * (1 + pulse * 0.35), alpha, order);
         if (approach != null) {
           this.marker(ringTexture(color, 8), p.x, p.y, p.z, MARKER_SIZE * (1.05 + approach * 2.6), alpha * (1 - approach * 0.6), 21);
@@ -256,7 +277,7 @@ export class Cues {
       const m = this.lit[i];
       const f = shape?.frets[i];
       if (f == null || f < 0) { m.visible = false; continue; }
-      const x0 = f > 0 ? fingerX(f) : 0;
+      const x0 = f > 0 ? this.fingerPos(i, f, staggerOf(shape.frets, shape.fingers, i)).x : 0;
       const a = new THREE.Vector3(x0, STRING_Y, stringZ(i, x0));
       const b = new THREE.Vector3(SCALE, STRING_Y, stringZ(i, SCALE));
       const d = b.clone().sub(a);
@@ -316,7 +337,8 @@ export class Cues {
       label.scale.set(6.4, 1.6, 1);
     }
 
-    this.drawLitStrings(cur ? cur.shape : next?.shape, cur ? 1 : 0.3);
+    this.shownShape = cur ? cur.shape : next?.shape ?? null;
+    this.drawLitStrings(this.shownShape, cur ? 1 : 0.3);
 
     // ---- Right hand ------------------------------------------------------
     const span = HIGHWAY_END - STRIKE_X;

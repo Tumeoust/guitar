@@ -1,6 +1,7 @@
 // Song data. A song has two tracks:
 //   left:  what the fretting hand holds  { beat, dur, name, shape: { frets[6], fingers[6] } }
-//   right: what the picking hand does    { beat, kind: 'strum'|'pick', dir: 'D'|'U', strings[], frets[6], fingers[6] }
+//   right: what the picking hand does    { beat, kind: 'strum'|'pick', dir: 'D'|'U', strings[], frets[6], fingers[6], wait }
+// In practice mode (below 100 % speed) the song stops at every event with wait: true until it is played right.
 // Beats are in the song's own beat unit (quarter notes, or eighths for 6/8).
 
 export const CHORDS = {
@@ -24,6 +25,7 @@ const STRUMS = {
   whole: [[0, 'D']],
   quarters: [[0, 'D'], [1, 'D'], [2, 'D'], [3, 'D']],
   campfire: [[0, 'D'], [1, 'D'], [1.5, 'U'], [2.5, 'U'], [3, 'D'], [3.5, 'U']],
+  waltz: [[0, 'D'], [1, 'D'], [2, 'D']],
 };
 
 function playedStrings(frets) {
@@ -54,7 +56,9 @@ function strumSong(meta, progression) {
     const shape = CHORDS[name];
     addLeft(left, beat, bars * bpb, name, shape);
     for (let b = 0; b < bars; b++) {
-      for (const [off, dir] of STRUMS[pattern]) right.push(strumEvent(shape, beat + b * bpb + off, dir));
+      for (const [off, dir] of STRUMS[pattern]) {
+        right.push({ ...strumEvent(shape, beat + b * bpb + off, dir), wait: off === 0 });
+      }
     }
     beat += bars * bpb;
   }
@@ -71,7 +75,7 @@ function melodySong(meta, notes) {
     frets[s] = fret;
     fingers[s] = finger;
     left.push({ beat, dur, name: null, shape: { frets, fingers } });
-    right.push({ beat, kind: 'pick', dir: 'D', strings: [s], frets, fingers });
+    right.push({ beat, kind: 'pick', dir: 'D', strings: [s], frets, fingers, wait: true });
     beat += dur;
   }
   return { ...meta, left, right, length: beat };
@@ -85,7 +89,7 @@ function arpeggioSong(meta, bars) {
     const shape = CHORDS[name];
     addLeft(left, beat, 6, name, shape);
     [bass, 3, 4, 5, 4, 3].forEach((s, k) => {
-      right.push({ beat: beat + k, kind: 'pick', dir: 'D', strings: [s], frets: shape.frets, fingers: shape.fingers });
+      right.push({ beat: beat + k, kind: 'pick', dir: 'D', strings: [s], frets: shape.frets, fingers: shape.fingers, wait: k === 0 });
     });
     beat += 6;
   }
@@ -116,6 +120,12 @@ function odeToJoy() {
 }
 
 export const SONGS = [
+  // Amazing Grace (traditional, public domain) with the G, C and D chords from the lessons.
+  strumSong(
+    { id: 'amazing-grace', title: 'Amazing Grace', subtitle: 'Traditional — G, C and D, three down-strums per bar', bpm: 84, beatsPerBar: 3 },
+    [['G', 'waltz', 2], ['C', 'waltz'], ['G', 'waltz', 3], ['D', 'waltz', 2],
+     ['G', 'waltz', 2], ['C', 'waltz'], ['G', 'waltz', 2], ['D', 'waltz'], ['G', 'waltz', 2]],
+  ),
   melodySong(
     { id: 'warmup', title: 'Finger Warm-up', subtitle: 'One finger per fret, frets 1–4 on every string', bpm: 70, beatsPerBar: 4 },
     warmup(),

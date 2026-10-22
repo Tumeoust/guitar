@@ -69,6 +69,20 @@ export function wideLabelTexture(text, color = '#ffffff') {
   }, 512, 128);
 }
 
+// String name crossed out in red: "don't play this string".
+export function mutedLabelTexture(text) {
+  return canvasTexture(`muted:${text}`, (g, s) => {
+    centeredText(g, text, s * 0.4, s / 2, 64, '#ff5d73');
+    g.lineWidth = 8;
+    g.lineCap = 'round';
+    g.strokeStyle = '#ff5d73';
+    g.beginPath();
+    g.moveTo(s * 0.7, s * 0.32); g.lineTo(s * 0.88, s * 0.5);
+    g.moveTo(s * 0.88, s * 0.32); g.lineTo(s * 0.7, s * 0.5);
+    g.stroke();
+  });
+}
+
 export function labelTexture(text, color = '#c3cad8') {
   return canvasTexture(`label:${text}:${color}`, (g, s) => {
     centeredText(g, text, s / 2, s / 2, 64, color);

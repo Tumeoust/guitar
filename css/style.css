@@ -131,8 +131,8 @@ input[type=range] { accent-color: var(--accent); }
   100% { transform: translateY(-40px) scale(1); opacity: 0; }
 }
 
-/* Lesson box */
-#lesson {
+/* Lesson and practice boxes */
+#lesson, #practice {
   position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
   width: min(520px, calc(100% - 32px));
   padding: 14px 16px;
@@ -140,7 +140,14 @@ input[type=range] { accent-color: var(--accent); }
   backdrop-filter: blur(6px);
   display: flex; flex-direction: column; gap: 8px;
 }
-#lesson[hidden] { display: none; }
+#lesson[hidden], #practice[hidden] { display: none; }
+#practice-status { font-size: 18px; font-weight: 700; min-height: 1.4em; }
+#practice-status.ok { color: #3ddc84; }
+#practice-status.bad { color: #ffb627; }
+#practice-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
+.speeds button { padding: 6px 0; }
+.speeds button.on { background: var(--accent); color: #06121a; border-color: transparent; font-weight: 700; }
+#practice .meter { margin: 0; flex: 1; }
 #lesson p { margin: 0; color: var(--muted); }
 .lesson-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 #lesson-dots { display: flex; gap: 5px; }
@@ -156,6 +163,7 @@ input[type=range] { accent-color: var(--accent); }
 .lesson-mic input { width: 110px; }
 #lesson-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
 @media (max-width: 1250px) { body.lesson-mode #legend { display: none; } }
+body.lesson-mode .chords > div:nth-child(2) { display: none; }
 .start-row { justify-content: center; margin-top: 8px; }
 .start-row button { flex: 0 1 auto; }
 
