@@ -15,6 +15,11 @@ export const CHORDS = {
   Dm: { frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] },
 };
 
+export const CHORD_NAMES = {
+  Em: 'E minor', Am: 'A minor', E: 'E major', A: 'A major', D: 'D major',
+  C: 'C major', G: 'G major', Dm: 'D minor', F: 'F major',
+};
+
 const STRUMS = {
   whole: [[0, 'D']],
   quarters: [[0, 'D'], [1, 'D'], [2, 'D'], [3, 'D']],

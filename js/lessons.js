@@ -95,7 +95,8 @@ export class LessonRunner {
       if (t - f.t < LESSON.wait) break; // still listening to this strum
       this.lastOnset = f.t;
       const result = this.mic.analyzeChord(f.t, this.shape.frets, CANDIDATES);
-      if (!result) continue;
+      // Bumps, taps and talking are ignored without comment.
+      if (!result || !result.musical) continue;
       this.ui.onResult(this, result);
       if (result.ok) this.advanceAt = t + 0.9;
       break;

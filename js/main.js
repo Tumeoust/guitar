@@ -83,6 +83,9 @@ const state = {
 let audio = null;
 let mic = null;
 let lesson = null; // a LessonRunner while in lesson mode
+let autoNext = null; // timer that starts the next lesson
+let sensitivity = 5;
+try { sensitivity = Number(localStorage.getItem('fretview.sensitivity')) || 5; } catch { /* storage unavailable */ }
 // ?selftest feeds the play-along synth into the detector instead of the microphone.
 const selfTest = new URLSearchParams(location.search).has('selftest');
 
@@ -247,6 +250,7 @@ async function enableMic() {
   } catch (err) {
     return `Could not open the microphone: ${err.message}`;
   }
+  mic.setSensitivity(sensitivity);
   mic.latency = Number($('latency').value) / 1000;
   mic.checkPitch = $('check-pitch').checked;
   $('mic-section').hidden = false;
@@ -289,17 +293,31 @@ const lessonUi = {
     }
   },
   onComplete() {
-    $('lesson-status').textContent = '🎉 Lesson complete!';
+    const next = lessonIndex() + 1;
+    const last = next >= LESSONS.length;
+    $('lesson-status').textContent = last
+      ? '🎉 All lessons complete!'
+      : `🎉 Lesson complete! Next up: ${LESSONS[next].title}`;
     $('lesson-status').className = 'ok';
     $('lesson-skip').hidden = true;
-    $('lesson-next').hidden = lessonIndex() + 1 >= LESSONS.length;
+    $('lesson-next').hidden = last;
     renderLessonDots();
+    if (!last) autoNext = setTimeout(() => startLesson(next), 2500);
   },
 };
 
 const lessonIndex = () => LESSONS.indexOf(lesson?.lesson);
 
+function setSensitivity(value) {
+  sensitivity = value;
+  document.querySelectorAll('.sensitivity').forEach((el) => { el.value = value; });
+  document.querySelectorAll('.sens-val').forEach((el) => { el.textContent = value; });
+  mic?.setSensitivity(value);
+  try { localStorage.setItem('fretview.sensitivity', value); } catch { /* storage unavailable */ }
+}
+
 async function startLesson(i) {
+  clearTimeout(autoNext);
   pause();
   $('overlay').hidden = true;
   $('panel').classList.remove('open');
@@ -323,6 +341,7 @@ async function startLesson(i) {
 }
 
 function exitLesson() {
+  clearTimeout(autoNext);
   if (!document.body.classList.contains('lesson-mode')) return;
   lesson = null;
   mic?.expect(null);
@@ -504,6 +523,10 @@ LESSONS.forEach((l, i) => lessonSelect.add(new Option(`${i + 1}. ${l.title}`, i)
 $('lesson-start').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
 $('start-lessons').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
 $('lesson-hear').addEventListener('click', hearChord);
+document.querySelectorAll('.sensitivity').forEach((el) => {
+  el.addEventListener('input', () => setSensitivity(Number(el.value)));
+});
+setSensitivity(sensitivity);
 $('lesson-skip').addEventListener('click', () => lesson?.skip());
 $('lesson-next').addEventListener('click', () => startLesson(lessonIndex() + 1));
 $('lesson-exit').addEventListener('click', () => {

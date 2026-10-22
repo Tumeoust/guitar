@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {
   SCALE, fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, TOP_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
 } from './guitar.js';
-import { discTexture, ringTexture, crossTexture } from './textures.js';
+import { discTexture, ringTexture, crossTexture, wideLabelTexture } from './textures.js';
+import { CHORD_NAMES } from './songs.js';
 
 export const FINGER_COLORS = { 1: '#4cc9f0', 2: '#80ed99', 3: '#ffd166', 4: '#f472b6' };
 // Colour always means "which finger": a string, a picking cue and a fretboard dot share the
@@ -305,6 +306,14 @@ export class Cues {
       this.band.scale.set(x1 - x0, 1, hw * 2);
     } else {
       this.band.visible = false;
+    }
+
+    // Chord name floating just above the finger markers (beyond the high e), so name and shape go together.
+    const named = cur || next;
+    if (named?.name) {
+      const x = held.length ? (fretX(Math.min(...held) - 1) + fretX(Math.max(...held))) / 2 : 1.8;
+      const label = this.marker(wideLabelTexture(CHORD_NAMES[named.name] || named.name), x, 1.2, -(boardHalfWidth(x) + 1.7), 1, cur ? 1 : 0.5, 23);
+      label.scale.set(6.4, 1.6, 1);
     }
 
     this.drawLitStrings(cur ? cur.shape : next?.shape, cur ? 1 : 0.3);

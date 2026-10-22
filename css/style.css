@@ -150,7 +150,10 @@ input[type=range] { accent-color: var(--accent); }
 #lesson-status { font-size: 18px; font-weight: 700; min-height: 1.4em; }
 #lesson-status.ok { color: #3ddc84; }
 #lesson-status.bad { color: #ffb627; }
-#lesson .meter { margin: 0; }
+#lesson .meter { margin: 0; flex: 1; }
+.lesson-mic { display: flex; align-items: center; gap: 14px; }
+.lesson-mic label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.lesson-mic input { width: 110px; }
 #lesson-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
 @media (max-width: 1250px) { body.lesson-mode #legend { display: none; } }
 .start-row { justify-content: center; margin-top: 8px; }

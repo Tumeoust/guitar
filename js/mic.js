@@ -2,8 +2,9 @@ import { midiOf, midiToHz, hzToMidi } from './music.js';
 
 // Chord lessons: minimum similarity, lead over the closest other chord, level below which a
 // string counts as silent (its fundamental, relative to the loudest string's), and how long to
-// listen after a strum.
-export const LESSON = { sim: 0.75, margin: 0.02, missing: 0.05, wait: 0.62 };
+// listen after a strum. tonal: share of the energy in the four loudest notes for a sound to count
+// as a chord at all (noise spreads evenly, i.e. about 0.33).
+export const LESSON = { sim: 0.75, margin: 0.02, missing: 0.05, wait: 0.62, tonal: 0.45 };
 
 // Listens to the microphone and judges right-hand events:
 //   - onsets (a string was struck) from spectral flux / level jumps,
@@ -22,6 +23,12 @@ export class MicJudge {
     this.latency = 0.06;
     this.checkPitch = true;
     this.active = false;
+    this.minRms = sensitivityToRms(5); // quieter strikes than this are ignored
+  }
+
+  // Sensitivity 1 (only loud strums count) .. 10 (very sensitive).
+  setSensitivity(value) {
+    this.minRms = sensitivityToRms(value);
   }
 
   // input: optional AudioNode to listen to instead of the microphone (used by ?selftest).
@@ -89,7 +96,7 @@ export class MicJudge {
     const gate = rms > Math.max(this.noise * 2.5, 0.004);
 
     let onset = false;
-    if (gate && t - this.lastOnset > 0.09) {
+    if (gate && rms > this.minRms && t - this.lastOnset > 0.09) {
       if (flux > this.fluxAvg * 1.8 || rms > this.slowRms * 1.4) {
         onset = true;
         this.lastOnset = t;
@@ -168,7 +175,13 @@ export class MicJudge {
     const missing = this.silentStrings(frets, win);
 
     const ok = sim >= LESSON.sim && sim - rivalSim >= LESSON.margin && missing.length === 0;
-    return { ok, sim, rival, rivalSim, missing };
+    // Was this a chord at all? A strummed chord keeps ringing and puts most of its energy into a few
+    // notes; a bump or a tap dies away quickly and spreads over all twelve.
+    const ringing = win.reduce((sum, f) => sum + f.rms, 0) / win.length >= this.minRms * 0.4;
+    const top4 = [...avg].sort((a, b) => b - a).slice(0, 4).reduce((a, b) => a + b, 0);
+    const total = avg.reduce((a, b) => a + b, 0) || 1;
+    const musical = ringing && top4 / total >= LESSON.tonal;
+    return { ok: ok && musical, musical, tonality: top4 / total, sim, rival, rivalSim, missing };
   }
 
   // The lessons say which chord they expect, so every frame can measure each string's fundamental.
@@ -255,6 +268,10 @@ function cosine(a, b) {
     nb += b[k] * b[k];
   }
   return dot / (Math.sqrt(na * nb) || 1);
+}
+
+function sensitivityToRms(value) {
+  return 0.004 * Math.pow(2, (10 - value) / 2);
 }
 
 // YIN pitch detector; returns Hz or 0.

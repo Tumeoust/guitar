@@ -60,6 +60,15 @@ export function crossTexture(color) {
   });
 }
 
+// Wide label for longer text such as chord names; use with a 4:1 sprite scale.
+export function wideLabelTexture(text, color = '#ffffff') {
+  return canvasTexture(`wide:${text}:${color}`, (g, w, h) => {
+    g.shadowColor = 'rgba(0, 0, 0, 0.8)';
+    g.shadowBlur = 12;
+    centeredText(g, text, w / 2, h / 2, 84, color);
+  }, 512, 128);
+}
+
 export function labelTexture(text, color = '#c3cad8') {
   return canvasTexture(`label:${text}:${color}`, (g, s) => {
     centeredText(g, text, s / 2, s / 2, 64, color);

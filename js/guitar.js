@@ -223,6 +223,18 @@ export function buildGuitar() {
     postTops.push(head.localToWorld(new THREE.Vector3(POSTS_X[p], headFace + 0.6, side * 2.45)));
   }
 
+  // String names next to the tuning pegs, low E to high e.
+  const STRING_LABELS = ['E', 'A', 'D', 'G', 'B', 'e'];
+  postTops.forEach((p, i) => {
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: labelTexture(STRING_LABELS[i], '#f2f4f8'), transparent: true, depthTest: false, depthWrite: false,
+    }));
+    label.renderOrder = 18;
+    label.scale.setScalar(1.7);
+    label.position.copy(p).add(new THREE.Vector3(0, 1.1, 0));
+    root.add(label);
+  });
+
   // Strings
   const RADII = [0.07, 0.062, 0.054, 0.046, 0.036, 0.03];
   const strings = [];
