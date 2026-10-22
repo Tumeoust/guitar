@@ -111,7 +111,8 @@ input[type=range] { accent-color: var(--accent); }
 .sym { width: 18px; text-align: center; font-weight: 800; }
 .sym.ring { color: #ddd; }
 .sym.x { color: #ff5d73; }
-.sym.gem { color: #3ddc84; }
+.sym.gem { color: #ffffff; }
+.legend-note { grid-column: 1 / -1; color: var(--muted); max-width: 260px; }
 
 /* Hit feedback */
 #feedback {

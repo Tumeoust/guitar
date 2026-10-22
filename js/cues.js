@@ -1,12 +1,19 @@
 import * as THREE from 'three';
 import {
-  fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, TOP_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X, STRING_COLORS,
+  SCALE, fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, TOP_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
 } from './guitar.js';
 import { discTexture, ringTexture, crossTexture } from './textures.js';
 
 export const FINGER_COLORS = { 1: '#4cc9f0', 2: '#80ed99', 3: '#ffd166', 4: '#f472b6' };
-const STRUM_COLORS = { D: '#8be9fd', U: '#ffb86c' };
-const MARKER_SIZE = 1.15;
+// Colour always means "which finger": a string, a picking cue and a fretboard dot share the
+// colour of the finger that frets it. Open strings are white.
+export const OPEN_COLOR = '#ffffff';
+const STRUM_COLORS = { D: '#ffffff', U: '#aab4c8' };
+const MARKER_SIZE = 1.4;
+
+export function stringColor(frets, fingers, s) {
+  return frets[s] > 0 ? FINGER_COLORS[fingers[s] || 1] : OPEN_COLOR;
+}
 const LANE_WIDTH = 7.4;
 
 class Pool {
@@ -129,11 +136,23 @@ export class Cues {
     this.strikeFlash = 0;
     this.strikeColor = new THREE.Color(0xffffff);
 
+    // Glow along the part of each string that should ring: from the fretting finger to the saddle.
+    this.lit = [];
+    for (let i = 0; i < 6; i++) {
+      const m = new THREE.Mesh(
+        new THREE.CylinderGeometry(1, 1, 1, 10, 1, true),
+        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+      );
+      m.renderOrder = 12;
+      r.add(m);
+      this.lit.push(m);
+    }
+
     this.targets = [];
     for (let i = 0; i < 6; i++) {
       const m = new THREE.Mesh(
         new THREE.RingGeometry(0.28, 0.4, 32).rotateX(-Math.PI / 2),
-        new THREE.MeshBasicMaterial({ color: STRING_COLORS[i], transparent: true, opacity: 0.9, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }),
       );
       m.position.set(STRIKE_X, STRING_Y - 0.02, stringZ(i, STRIKE_X));
       m.renderOrder = 14;
@@ -181,7 +200,7 @@ export class Cues {
       if (f === -1) {
         this.marker(crossTexture('#ff5d73'), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.95, alpha, order);
       } else if (f === 0) {
-        this.marker(ringTexture(STRING_COLORS[i], 14), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.95, alpha, order);
+        this.marker(ringTexture(OPEN_COLOR, 14), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.95, alpha, order);
       } else {
         const finger = fingers[i] || 1;
         const color = FINGER_COLORS[finger];
@@ -230,6 +249,28 @@ export class Cues {
     }
   }
 
+  drawLitStrings(shape, alpha) {
+    const up = new THREE.Vector3(0, 1, 0);
+    for (let i = 0; i < 6; i++) {
+      const m = this.lit[i];
+      const f = shape?.frets[i];
+      if (f == null || f < 0) { m.visible = false; continue; }
+      const x0 = f > 0 ? fingerX(f) : 0;
+      const a = new THREE.Vector3(x0, STRING_Y, stringZ(i, x0));
+      const b = new THREE.Vector3(SCALE, STRING_Y, stringZ(i, SCALE));
+      const d = b.clone().sub(a);
+      const flash = this.targets[i].flash;
+      const r = 0.14 + flash * 0.08;
+      m.visible = true;
+      m.position.copy(a).add(b).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(up, d.clone().normalize());
+      m.scale.set(r, d.length(), r);
+      m.material.color.set(stringColor(shape.frets, shape.fingers, i));
+      // Open strings stay quieter so the finger colours stand out.
+      m.material.opacity = alpha * Math.min(1, (f > 0 ? 0.85 : 0.4) + flash * 0.4);
+    }
+  }
+
   arrowGeo(len) {
     const key = Math.round(len * 10);
     if (!this.arrowGeos.has(key)) this.arrowGeos.set(key, arrowGeometry(key / 10));
@@ -266,6 +307,8 @@ export class Cues {
       this.band.visible = false;
     }
 
+    this.drawLitStrings(cur ? cur.shape : next?.shape, cur ? 1 : 0.3);
+
     // ---- Right hand ------------------------------------------------------
     const span = HIGHWAY_END - STRIKE_X;
     for (const ev of song.right) {
@@ -278,8 +321,9 @@ export class Cues {
       if (ev.kind === 'pick') {
         const s = ev.strings[0];
         const gem = this.gems.get();
-        gem.material.color.set(STRING_COLORS[s]);
-        gem.material.emissive.set(STRING_COLORS[s]);
+        const color = stringColor(ev.frets, ev.fingers, s);
+        gem.material.color.set(color);
+        gem.material.emissive.set(color);
         gem.material.opacity = fade;
         gem.position.set(x, STRING_Y + 0.1, stringZ(s, x));
         gem.scale.set(1.6 * grow, 0.7 * grow, grow);

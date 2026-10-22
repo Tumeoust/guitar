@@ -9,11 +9,13 @@ The game only shows what each hand has to do:
 - **Left hand.** Coloured dots on the fretboard show which finger goes where:
   1 = index (blue), 2 = middle (green), 3 = ring (yellow), 4 = pinky (pink).
   ○ at the nut means play the string open, and ✕ means don't play it.
+  Colour always means a finger: each string to be played glows in the colour of the finger fretting it,
+  from the finger to the bridge. Open strings glow white.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
 - **Right hand.** Cues slide along the strings from the bridge towards the white line over the soundhole.
   Strum or pick when they reach it.
-  - Blue arrow: strum down (thick → thin strings). Orange arrow: strum up.
-  - A coloured gem on a string: pick that string.
+  - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
+  - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
 
 By default the game gives no feedback; you just play along. An optional **microphone mode** listens to your guitar
 and grades each strum or pick as *Perfect*, *Good*, *Wrong notes* or *Miss*:

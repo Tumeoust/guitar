@@ -16,7 +16,6 @@ export const SOUNDHOLE_X = 48.5;
 export const STRIKE_X = 50.5;          // where the picking hand hits the strings
 export const HIGHWAY_END = 63;         // right-hand cues start here and travel to STRIKE_X
 export const NUT_CUE_X = -1.1;         // where open / muted markers sit
-export const STRING_COLORS = ['#ff5a6a', '#ffb627', '#3fa7ff', '#ff8a3d', '#3ddc84', '#c084fc'];
 
 const NUT_SPREAD = 3.5;
 const SADDLE_SPREAD = 5.3;
@@ -233,7 +232,7 @@ export function buildGuitar() {
       color: wound ? 0xc9a46b : 0xe4e8ef,
       metalness: 0.85,
       roughness: 0.3,
-      emissive: new THREE.Color(STRING_COLORS[i]),
+      emissive: 0xffffff,
       emissiveIntensity: 0,
     });
     const a = new THREE.Vector3(-0.05, STRING_Y, stringZ(i, 0));
@@ -268,7 +267,7 @@ export function buildGuitar() {
         const wobble = Math.sin(t * 90) * 0.03 * s.vib;
         s.mesh.position.z = s.baseZ + wobble;
         s.mesh.scale.x = s.mesh.scale.z = 1 + s.vib * 1.2;
-        s.mat.emissiveIntensity = Math.min(1.4, s.glow * 0.35 + s.vib * 1.2);
+        s.mat.emissiveIntensity = Math.min(1, s.glow * 0.3 + s.vib * 0.6);
       }
     },
   };

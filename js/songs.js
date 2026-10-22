@@ -1,6 +1,6 @@
 // Song data. A song has two tracks:
 //   left:  what the fretting hand holds  { beat, dur, name, shape: { frets[6], fingers[6] } }
-//   right: what the picking hand does    { beat, kind: 'strum'|'pick', dir: 'D'|'U', strings[], frets[6] }
+//   right: what the picking hand does    { beat, kind: 'strum'|'pick', dir: 'D'|'U', strings[], frets[6], fingers[6] }
 // Beats are in the song's own beat unit (quarter notes, or eighths for 6/8).
 
 export const CHORDS = {
@@ -35,7 +35,7 @@ function strumEvent(shape, beat, dir) {
   let strings = playedStrings(shape.frets);
   // Up strums only catch the treble strings, travelling high -> low.
   if (dir === 'U') strings = strings.slice(-4).reverse();
-  return { beat, kind: 'strum', dir, strings, frets: shape.frets };
+  return { beat, kind: 'strum', dir, strings, frets: shape.frets, fingers: shape.fingers };
 }
 
 // progression: [chordName, strumPattern, bars = 1]
@@ -64,7 +64,7 @@ function melodySong(meta, notes) {
     frets[s] = fret;
     fingers[s] = finger;
     left.push({ beat, dur, name: null, shape: { frets, fingers } });
-    right.push({ beat, kind: 'pick', dir: 'D', strings: [s], frets });
+    right.push({ beat, kind: 'pick', dir: 'D', strings: [s], frets, fingers });
     beat += dur;
   }
   return { ...meta, left, right, length: beat };
@@ -78,7 +78,7 @@ function arpeggioSong(meta, bars) {
     const shape = CHORDS[name];
     addLeft(left, beat, 6, name, shape);
     [bass, 3, 4, 5, 4, 3].forEach((s, k) => {
-      right.push({ beat: beat + k, kind: 'pick', dir: 'D', strings: [s], frets: shape.frets });
+      right.push({ beat: beat + k, kind: 'pick', dir: 'D', strings: [s], frets: shape.frets, fingers: shape.fingers });
     });
     beat += 6;
   }
