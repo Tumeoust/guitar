@@ -27,6 +27,7 @@ const STRUMS = {
   campfire: [[0, 'D'], [1, 'D'], [1.5, 'U'], [2.5, 'U'], [3, 'D'], [3.5, 'U']],
   waltz: [[0, 'D'], [1, 'D'], [2, 'D']],
   // Change drills in 4/4: strum part of the bar and use the silent beats to move to the next chord.
+  ballad: [[0, 'D'], [1, 'D'], [2, 'D'], [2.5, 'U'], [3.5, 'U']],
   two: [[0, 'D'], [1, 'D']],
   three: [[0, 'D'], [1, 'D'], [2, 'D']],
 };
@@ -111,6 +112,10 @@ function drillSong(meta, chords) {
   return { ...strumSong({ bpm: 60, beatsPerBar: 4, ...meta }, progression), drill: true };
 }
 
+function cinnamonLoop(pattern) {
+  return [['C', pattern], ['Em', pattern], ['D', pattern], ['Am', pattern]];
+}
+
 function warmup() {
   const notes = [];
   for (let s = 0; s < 6; s++) for (let f = 1; f <= 4; f++) notes.push([s, f, f, 1]);
@@ -166,10 +171,17 @@ export const SONGS = [
     [['Am', 1], ['C', 1], ['D', 2], ['F', 2], ['Am', 1], ['C', 1], ['E', 0], ['E', 0],
      ['Am', 1], ['C', 1], ['D', 2], ['F', 2], ['Am', 1], ['E', 0], ['Am', 1], ['Am', 1]],
   ),
+  // Cinnamon Girl (Lana Del Rey): only the chord loop and a strum pattern, no melody or lyrics.
+  strumSong(
+    { id: 'cinnamon-girl', title: 'Cinnamon Girl', subtitle: 'Lana Del Rey — capo on the 2nd fret, C – Em – D – Am', bpm: 69, beatsPerBar: 4, capo: 2 },
+    [...cinnamonLoop('whole'), ...cinnamonLoop('ballad'), ...cinnamonLoop('ballad'), ...cinnamonLoop('ballad'),
+     ...cinnamonLoop('ballad'), ...cinnamonLoop('ballad'), ...cinnamonLoop('ballad'), ...cinnamonLoop('ballad'), ['C', 'whole']],
+  ),
   drillSong({ id: 'drill-em-am', title: 'Change drill: Em ↔ Am', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Em', 'Am']),
   drillSong({ id: 'drill-g-c', title: 'Change drill: G ↔ C', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'C']),
   drillSong({ id: 'drill-g-d', title: 'Change drill: G ↔ D', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'D']),
   drillSong({ id: 'drill-g-c-d', title: 'Change drill: G – C – G – D', subtitle: 'The changes in Amazing Grace, with fewer free beats each round' }, ['G', 'C', 'G', 'D']),
   drillSong({ id: 'drill-campfire', title: 'Change drill: G – Em – C – D', subtitle: 'The changes in Campfire Strum, with fewer free beats each round' }, ['G', 'Em', 'C', 'D']),
+  drillSong({ id: 'drill-cinnamon', title: 'Change drill: C – Em – D – Am', subtitle: 'The changes in Cinnamon Girl, with fewer free beats each round' }, ['C', 'Em', 'D', 'Am']),
   drillSong({ id: 'drill-am-e', title: 'Change drill: Am ↔ E', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Am', 'E']),
 ];

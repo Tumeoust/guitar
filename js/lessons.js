@@ -57,6 +57,13 @@ export const LESSONS = [
   { group: 'G, Em, C and D (Campfire Strum)', title: 'In time: G – Em – C – D', kind: 'song', song: 'drill-campfire',
     tip: 'The changes of Campfire Strum in order. After this, try the song itself.' },
 
+  { group: 'C, Em, D and Am (Cinnamon Girl)', title: 'Changing C → Em → D → Am', chords: ['C', 'Em', 'D', 'Am', 'C', 'Em', 'D', 'Am', 'C'], reps: 1,
+    tip: 'C → Em: ring and middle each move one string towards you, the index lifts off. Em → D: a new shape — aim the index at the G string first. D → Am: index to the B string at the 1st fret, middle and ring onto the D and G strings. Am → C: only the ring finger moves, up to the A string at the 3rd fret.' },
+  { group: 'C, Em, D and Am (Cinnamon Girl)', title: 'Quick changes C → Em → D → Am', kind: 'race', chords: ['C', 'Em', 'D', 'Am'], targets: [3, 2, 1.5], per: 4,
+    tip: `${SLOW}Am → C is the easy one: index and middle stay put, only the ring finger moves.` },
+  { group: 'C, Em, D and Am (Cinnamon Girl)', title: 'In time: C – Em – D – Am', kind: 'song', song: 'drill-cinnamon',
+    tip: 'The loop of Cinnamon Girl. After this, try the song itself — with a capo on the 2nd fret.' },
+
   { group: 'Am, E, A and D', title: 'Changing Am ↔ E', chords: ['Am', 'E', 'Am', 'E', 'Am', 'E'], reps: 1,
     tip: 'Am and E are the same shape, one string apart. Move all three fingers together.' },
   { group: 'Am, E, A and D', title: 'Quick changes Am ↔ E', kind: 'race', chords: ['Am', 'E'], targets: [3, 2, 1.5], per: 4,

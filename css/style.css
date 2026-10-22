@@ -48,6 +48,12 @@ button.icon { padding: 4px 10px; }
 }
 #hud .song { min-width: 0; flex: 1; }
 #song-title { font-weight: 700; font-size: 16px; }
+#capo {
+  margin-left: 6px; padding: 1px 8px; border-radius: 6px; vertical-align: 2px;
+  background: #ffd166; color: #0b0d12; font-size: 12px; font-weight: 800;
+}
+#capo[hidden] { display: none; }
+#countdown-capo { color: #ffd166; font-weight: 700; }
 #song-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hud .chords { display: flex; gap: 22px; font-size: 16px; }
 #chord-now { font-size: 28px; color: #fff; white-space: nowrap; }

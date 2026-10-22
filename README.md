@@ -117,6 +117,11 @@ The settings panel folds away while a song plays, and comes back when you pause.
 - Campfire Strum: G – Em – C – D with a D DU UDU pattern.
 - Ode to Joy (Beethoven): single-note melody.
 - House of the Rising Sun (traditional): fingerpicked arpeggios in 6/8.
+- Cinnamon Girl (Lana Del Rey): the C – Em – D – Am loop with a capo on the 2nd fret. Only the chords and a strum
+  pattern, no melody or lyrics.
+
+A song can set `capo`. The dots and fret numbers then count from the capo, the way chord sheets write it,
+and the play-along sound and the microphone check use the pitches the capo gives. The HUD shows a *Capo* badge.
 
 To add a song, edit `js/songs.js`. Songs are built from chord progressions with strum patterns, from note lists,
 or from arpeggio patterns. The `CHORDS` table defines frets and fingers per string, from low E to high e.

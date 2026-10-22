@@ -5,7 +5,7 @@ import { Cues, FINGER_COLORS } from './cues.js';
 import { SONGS, CHORDS, CHORD_NAMES, strumEvent } from './songs.js';
 import { GuitarAudio } from './audio.js';
 import { MicJudge, LESSON } from './mic.js';
-import { midiName } from './music.js';
+import { midiName, setCapo } from './music.js';
 import { LESSONS, LessonRunner, CANDIDATES, chordFeedback, stringName } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
@@ -202,6 +202,10 @@ function loadSong(song) {
   pause();
   state.song = song;
   state.anchorBeat = -countInBeats();
+  setCapo(song.capo);
+  $('capo').hidden = !song.capo;
+  $('capo').textContent = song.capo ? `Capo ${song.capo}` : '';
+  $('countdown-capo').textContent = song.capo ? `Capo on fret ${song.capo}` : '';
   $('song-title').textContent = song.title;
   $('song-sub').textContent = song.subtitle;
   resetStats();
@@ -406,6 +410,8 @@ async function startLesson(i) {
     $('lesson-status').className = 'bad';
     return;
   }
+  setCapo(0);
+  $('capo').hidden = true;
   lesson = new LessonRunner(LESSONS[i], mic, lessonUi);
   setView('lesson');
   $('song-title').textContent = lesson.lesson.title;

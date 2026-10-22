@@ -4,8 +4,14 @@
 
 export const OPEN_MIDI = [40, 45, 50, 55, 59, 64];
 
+// A capo raises every string, so frets in the song data count from the capo, as players read them.
+let capo = 0;
+export function setCapo(fret) {
+  capo = fret || 0;
+}
+
 export function midiOf(string, fret) {
-  return OPEN_MIDI[string] + fret;
+  return OPEN_MIDI[string] + capo + fret;
 }
 
 export function midiToHz(midi) {
