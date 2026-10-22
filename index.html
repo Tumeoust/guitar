@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fretview</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <header id="hud">
+    <div class="song">
+      <div id="song-title">—</div>
+      <div id="song-sub" class="muted"></div>
+    </div>
+    <div class="chords">
+      <div><span class="muted">Now</span> <strong id="chord-now">—</strong></div>
+      <div><span class="muted">Next</span> <strong id="chord-next">—</strong></div>
+    </div>
+    <div class="pos">
+      <div id="countin"></div>
+      <div id="barbeat" class="muted">Bar 1 · Beat 1</div>
+    </div>
+    <div id="progress" title="Click to jump"><div id="progress-fill"></div></div>
+  </header>
+
+  <aside id="panel" class="open">
+    <button id="panel-toggle" class="icon" title="Show / hide settings">☰</button>
+    <div class="panel-body">
+      <label class="field">Song
+        <select id="song-select"></select>
+      </label>
+      <div class="row">
+        <button id="play" class="primary">▶ Play</button>
+        <button id="restart">⟲ Restart</button>
+      </div>
+      <label class="field">Speed <span id="speed-val">100%</span>
+        <input id="speed" type="range" min="40" max="120" step="5" value="100">
+      </label>
+      <label class="field">Look-ahead <span id="look-val">2.4 s</span>
+        <input id="look" type="range" min="1.2" max="4" step="0.2" value="2.4">
+      </label>
+      <label class="check"><input id="guide" type="checkbox" checked> Play-along guitar sound</label>
+      <label class="check"><input id="metro" type="checkbox"> Metronome</label>
+      <label class="check"><input id="loop" type="checkbox"> Loop song</label>
+      <div class="row">
+        <button id="view-player">Player view</button>
+        <button id="view-top">Top view</button>
+      </div>
+
+      <h3>Microphone feedback</h3>
+      <p class="muted small">Optional. Listens to your guitar and grades each strum or pick. Use headphones for the play-along sound.</p>
+      <button id="mic-toggle">🎤 Enable microphone</button>
+      <div id="mic-section" hidden>
+        <div class="meter"><div id="mic-level"></div></div>
+        <div class="small muted">Tuner: <span id="tuner">—</span></div>
+        <label class="check"><input id="check-pitch" type="checkbox" checked> Check the right notes, not just timing</label>
+        <label class="field">Mic delay <span id="lat-val">60 ms</span>
+          <input id="latency" type="range" min="0" max="300" step="10" value="60">
+        </label>
+        <div id="stats" class="stats"></div>
+      </div>
+    </div>
+  </aside>
+
+  <div id="rotate-hint">Turn your phone sideways for a bigger guitar.</div>
+
+  <div id="legend">
+    <div class="legend-title">Left hand</div>
+    <div class="legend-row"><span class="dot" style="--c:#4cc9f0">1</span>index</div>
+    <div class="legend-row"><span class="dot" style="--c:#80ed99">2</span>middle</div>
+    <div class="legend-row"><span class="dot" style="--c:#ffd166">3</span>ring</div>
+    <div class="legend-row"><span class="dot" style="--c:#f472b6">4</span>pinky</div>
+    <div class="legend-row"><span class="sym ring">○</span>open string</div>
+    <div class="legend-row"><span class="sym x">✕</span>don't play</div>
+    <div class="legend-title">Right hand</div>
+    <div class="legend-row"><span class="sym" style="color:#8be9fd">➜</span>strum down (thick → thin)</div>
+    <div class="legend-row"><span class="sym" style="color:#ffb86c">➜</span>strum up (thin → thick)</div>
+    <div class="legend-row"><span class="sym gem">●</span>pick that string</div>
+  </div>
+
+  <div id="feedback"></div>
+
+  <div id="overlay">
+    <div class="card">
+      <h1>Fretview</h1>
+      <p>Play along on a real guitar. You see the guitar the way you see your own when you look down at it:
+        headstock on the left, thickest string closest to you.</p>
+      <ul>
+        <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where. The next shape fades in with a shrinking ring.</li>
+        <li><b>Right hand:</b> arrows and dots slide towards the white line over the soundhole. Strum or pick when they reach it.</li>
+      </ul>
+      <p class="muted small">Space = play / pause · R = restart · ← / → = jump a bar · drag to move the camera</p>
+      <button id="start" class="primary big">Start</button>
+      <div id="results"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
