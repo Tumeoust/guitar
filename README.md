@@ -35,7 +35,10 @@ npx http-server -p 8080 .
 python3 -m http.server 8080
 ```
 
-Then open <http://localhost:8080>. The site can also be hosted as-is on GitHub Pages.
+Then open <http://localhost:8080>.
+
+Every push to `main` publishes the site to GitHub Pages through `.github/workflows/pages.yml`.
+In the repository settings, under **Pages**, the source must be set to **GitHub Actions**.
 
 Microphone access needs a secure context: `localhost` or HTTPS.
 
