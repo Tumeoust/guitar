@@ -36,11 +36,7 @@
   <aside id="panel" class="open">
     <button id="panel-toggle" class="icon" title="Show / hide settings">☰</button>
     <div class="panel-body">
-      <h3>Chord lessons</h3>
-      <label class="field">Lesson
-        <select id="lesson-select"></select>
-      </label>
-      <button id="lesson-start" class="primary">🎓 Start lesson</button>
+      <button id="menu-open" title="Back to the start screen (Esc)">⌂ Menu</button>
 
       <h3>Play along</h3>
       <label class="field">Song
@@ -59,13 +55,10 @@
         </div>
         <span class="small muted">Below 100% the song waits until you play each chord or note right (uses the microphone).</span>
       </div>
-      <label class="field">Speed <span id="speed-val">100%</span>
-        <input id="speed" type="range" min="25" max="120" step="5" value="100">
-      </label>
       <label class="field">Look-ahead <span id="look-val">2.4 s</span>
         <input id="look" type="range" min="1.2" max="4" step="0.2" value="2.4">
       </label>
-      <label class="check"><input id="guide" type="checkbox"> Play-along guitar sound</label>
+      <label class="check"><input id="guide" class="guide" type="checkbox"> Play-along guitar sound</label>
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
       <label class="check"><input id="loop" type="checkbox"> Loop song</label>
       <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
@@ -152,7 +145,7 @@
   </section>
 
   <div id="overlay">
-    <div class="card">
+    <div class="card" id="screen-home">
       <h1>Fretview</h1>
       <p>Play along on a real guitar. You see the guitar the way you see your own when you look down at it:
         headstock on the left, thickest string closest to you.</p>
@@ -162,13 +155,50 @@
         <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where. The next shape fades in with a shrinking ring.</li>
         <li><b>Right hand:</b> arrows and dots slide towards the white line over the soundhole. Strum or pick when they reach it.</li>
       </ul>
-      <p class="muted small">Space = play / pause · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera</p>
+      <p class="muted small">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera</p>
       <div class="row start-row">
         <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
-        <button id="start" class="big">▶ Play songs</button>
+        <button id="start" class="big">♫ Play songs</button>
       </div>
+    </div>
+
+    <div class="card wide" id="screen-songs" hidden>
+      <div class="card-head">
+        <button class="back" title="Back (Esc)">← Back</button>
+        <h2>Pick a song</h2>
+      </div>
+      <div id="song-list" class="pick-list" role="listbox" aria-label="Songs"></div>
+      <div class="field">Practice speed
+        <div class="row speeds">
+          <button data-speed="25">25%</button>
+          <button data-speed="50">50%</button>
+          <button data-speed="75">75%</button>
+          <button data-speed="100" class="on">100%</button>
+        </div>
+        <span class="small muted">Below 100% the song waits until you play each chord or note right. It uses the microphone, so the browser will ask for it.</span>
+      </div>
+      <label class="check"><input class="guide" type="checkbox"> Play-along guitar sound</label>
+      <button id="song-go" class="primary big">▶ Play</button>
+    </div>
+
+    <div class="card wide" id="screen-lessons" hidden>
+      <div class="card-head">
+        <button class="back" title="Back (Esc)">← Back</button>
+        <h2>Chord lessons</h2>
+      </div>
+      <p class="muted small">Lessons listen to your guitar through the microphone to check each chord.
+        The browser asks for permission the first time.</p>
+      <button id="lesson-continue" class="primary big"></button>
+      <div id="lesson-list" class="pick-list" role="list" aria-label="Lessons"></div>
+    </div>
+
+    <div class="card" id="screen-results" hidden>
       <div id="results"></div>
-      <button id="results-next" class="primary" hidden></button>
+      <div class="row start-row">
+        <button id="results-next" class="primary big" hidden></button>
+        <button id="results-again" class="big">⟲ Play again</button>
+      </div>
+      <button id="results-back" class="link"></button>
     </div>
   </div>
 
