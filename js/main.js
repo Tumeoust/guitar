@@ -364,7 +364,7 @@ const lessonUi = {
     $('lesson-next').hidden = last;
     markLessonDone(lessonIndex());
     renderLessonDots();
-    if (!last) autoNext = setTimeout(() => startLesson(next), 2500);
+    if (!last) autoNext = setTimeout(() => startLesson(next), 1000);
   },
 };
 
