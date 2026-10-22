@@ -17,8 +17,31 @@ The game only shows what each hand has to do:
   - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
   - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
 
-By default the game gives no feedback; you just play along. An optional **microphone mode** listens to your guitar
-and grades each strum or pick as *Perfect*, *Good*, *Wrong notes* or *Miss*:
+## Chord lessons
+
+The lessons teach one chord at a time with no time pressure, then drill changes between chords:
+Em, Am, E, A, D, C, G and Dm, then Em ↔ Am, Am ↔ E, A ↔ D, and G → C → D.
+The chord to hold is shown on the neck. The lesson listens through the device microphone and moves on only
+when it hears the chord played correctly. When a strum is wrong, it says what to fix:
+
+- "The G string isn't ringing" when a string's fundamental frequency is missing.
+- "That sounded more like E" when another chord matches better.
+
+**Hear it** plays the chord once so you know how it should sound. The microphone ignores that playback.
+
+How the check works (`MicJudge.analyzeChord` in `js/mic.js`):
+
+1. About 0.4–0.6 s after a strum, a long FFT (16384 samples) is folded into a 12-note chroma profile.
+2. That profile is compared with an expected profile built from each string's note plus its first overtones.
+3. The strum passes if it matches the expected chord well, and better than every other chord the app knows,
+   by a margin. The margin is what tells near-twins like Em / E or Am / A apart.
+
+## Songs
+
+The game is silent by default. The play-along guitar sound can be switched on in the settings.
+
+An optional **microphone mode** listens to your guitar and grades each strum or pick as
+*Perfect*, *Good*, *Wrong notes* or *Miss*:
 
 - An onset detector (spectral flux) catches the strike.
 - For single notes, a YIN pitch detector checks the pitch.
@@ -52,7 +75,7 @@ Microphone access needs a secure context: `localhost` or HTTPS.
 | Drag / scroll      | Move / zoom the camera                 |
 | Speed slider       | 40–120 % tempo                         |
 | Look-ahead slider  | How early cues appear                  |
-| Play-along sound   | Synthesised guitar playing the part    |
+| Play-along sound   | Synthesised guitar playing the part (off by default) |
 | Mic delay          | Compensates for microphone latency     |
 
 The settings panel folds away while a song plays, and comes back when you pause.
@@ -78,11 +101,13 @@ or from arpeggio patterns. The `CHORDS` table defines frets and fingers per stri
 | `js/songs.js`    | Chord shapes and song data                                            |
 | `js/audio.js`    | Karplus–Strong string synth and metronome                             |
 | `js/mic.js`      | Microphone onset, pitch and chord detection, and grading              |
+| `js/lessons.js`  | Chord lessons and the lesson runner (listens, judges, explains)       |
 
 ## Testing microphone mode without a guitar
 
-Open `index.html?selftest`. Microphone mode then listens to the play-along synth instead of the real microphone.
-Playing along "perfectly" should score mostly Perfect.
+Open `index.html?selftest`. Microphone mode and lessons then listen to the synth instead of the real microphone.
+For songs, switch the play-along sound on; playing along "perfectly" should score mostly Perfect.
+For lessons, `fretview.audio.playEvent(...)` in the console strums any chord into the detector.
 
 Grading of picked notes during arpeggios is the least reliable part, because other strings are still ringing.
 Untick *Check the right notes* to grade timing only.

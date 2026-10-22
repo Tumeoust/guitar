@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { buildGuitar } from './guitar.js';
 import { Cues } from './cues.js';
-import { SONGS } from './songs.js';
+import { SONGS, CHORDS, strumEvent } from './songs.js';
 import { GuitarAudio } from './audio.js';
 import { MicJudge } from './mic.js';
 import { midiName } from './music.js';
+import { LESSONS, LessonRunner } from './lessons.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -38,6 +39,8 @@ controls.minDistance = 10;
 const VIEWS = {
   player: { pos: [52, 60, 62], target: [28, -4, 0] },
   top: { pos: [30, 100, 3], target: [30, 0, 0] },
+  // Lessons are about the fretting hand: closer in on the first frets.
+  lesson: { pos: [30, 36, 38], target: [11, -3, 0] },
 };
 let currentView = 'player';
 function setView(name) {
@@ -69,7 +72,7 @@ const state = {
   anchorBeat: 0,
   speed: 1,
   lookSec: 2.4,
-  guide: true,
+  guide: false,
   metro: false,
   loop: false,
   scheduledBeat: 0,
@@ -79,6 +82,7 @@ const state = {
 };
 let audio = null;
 let mic = null;
+let lesson = null; // a LessonRunner while in lesson mode
 // ?selftest feeds the play-along synth into the detector instead of the microphone.
 const selfTest = new URLSearchParams(location.search).has('selftest');
 
@@ -233,20 +237,15 @@ function renderStats() {
     <span>Accuracy</span><b>${acc == null ? '—' : acc + '%'}</b>`;
 }
 
-async function toggleMic() {
-  if (mic?.active) {
-    mic.stop();
-    $('mic-section').hidden = true;
-    $('mic-toggle').textContent = '🎤 Enable microphone';
-    return;
-  }
+// Returns an error message, or null once the microphone is listening.
+async function enableMic() {
+  if (mic?.active) return null;
   ensureAudio();
   mic = mic || new MicJudge(audio.ctx);
   try {
     await mic.start(selfTest ? audio.guide : undefined);
   } catch (err) {
-    alert(`Could not open the microphone: ${err.message}`);
-    return;
+    return `Could not open the microphone: ${err.message}`;
   }
   mic.latency = Number($('latency').value) / 1000;
   mic.checkPitch = $('check-pitch').checked;
@@ -256,6 +255,126 @@ async function toggleMic() {
   const beat = beatAt(clockNow());
   const idx = state.song.right.findIndex((ev) => ev.beat >= beat);
   state.judgeIndex = idx < 0 ? state.song.right.length : idx;
+  return null;
+}
+
+async function toggleMic() {
+  if (mic?.active) {
+    exitLesson();
+    mic.stop();
+    $('mic-section').hidden = true;
+    $('mic-toggle').textContent = '🎤 Enable microphone';
+    return;
+  }
+  const err = await enableMic();
+  if (err) alert(err);
+}
+
+// ---- Lessons ---------------------------------------------------------------
+const lessonUi = {
+  onStep: renderLesson,
+  onResult(runner, result) {
+    const status = $('lesson-status');
+    if (result.ok) {
+      status.textContent = `✓ That's ${runner.chord}!`;
+      status.className = 'ok';
+      const played = runner.shape.frets.map((f, i) => (f >= 0 ? i : -1)).filter((i) => i >= 0);
+      played.forEach((i) => guitar.pluck(i, 0.8));
+      cues.flashStrings(played);
+      cues.flashJudgement('#3ddc84');
+    } else {
+      status.textContent = runner.feedback(result);
+      status.className = 'bad';
+      cues.flashJudgement('#ffb627');
+    }
+  },
+  onComplete() {
+    $('lesson-status').textContent = '🎉 Lesson complete!';
+    $('lesson-status').className = 'ok';
+    $('lesson-skip').hidden = true;
+    $('lesson-next').hidden = lessonIndex() + 1 >= LESSONS.length;
+    renderLessonDots();
+  },
+};
+
+const lessonIndex = () => LESSONS.indexOf(lesson?.lesson);
+
+async function startLesson(i) {
+  pause();
+  $('overlay').hidden = true;
+  $('panel').classList.remove('open');
+  $('lesson-select').value = i;
+  const err = await enableMic();
+  document.body.classList.add('lesson-mode');
+  $('lesson').hidden = false;
+  if (err) {
+    lesson = null;
+    $('lesson-status').textContent = `${err}. Lessons need the microphone to hear your guitar.`;
+    $('lesson-status').className = 'bad';
+    return;
+  }
+  lesson = new LessonRunner(LESSONS[i], mic, lessonUi);
+  setView('lesson');
+  $('song-title').textContent = lesson.lesson.title;
+  $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length}`;
+  $('lesson-skip').hidden = false;
+  $('lesson-next').hidden = true;
+  renderLesson(lesson);
+}
+
+function exitLesson() {
+  if (!document.body.classList.contains('lesson-mode')) return;
+  lesson = null;
+  mic?.expect(null);
+  document.body.classList.remove('lesson-mode');
+  $('lesson').hidden = true;
+  setView('player');
+  loadSong(state.song);
+  lastHud = '';
+}
+
+function renderLesson(runner) {
+  const step = runner.index + 1;
+  $('lesson-step').textContent = `Chord ${step} of ${runner.steps.length}`;
+  $('lesson-tip').textContent = runner.lesson.chords.length > 1
+    ? `${runner.lesson.tip} Now: ${runner.chord}.` : runner.lesson.tip;
+  $('lesson-status').textContent = runner.index === 0
+    ? `Hold ${runner.chord} and strum when you're ready`
+    : `Now ${runner.chord} — strum when you're ready`;
+  $('lesson-status').className = '';
+  renderLessonDots();
+}
+
+function renderLessonDots() {
+  $('lesson-dots').replaceChildren(...lesson.steps.map((_, k) => {
+    const dot = document.createElement('span');
+    if (k < lesson.index || lesson.done) dot.className = 'done';
+    else if (k === lesson.index) dot.className = 'now';
+    return dot;
+  }));
+}
+
+function updateLessonHud() {
+  const hud = `lesson|${lesson.chord}|${lesson.nextChord}|${lesson.index}|${lesson.done}`;
+  if (hud === lastHud) return;
+  lastHud = hud;
+  $('chord-now').textContent = lesson.chord;
+  $('chord-next').textContent = lesson.nextChord || '—';
+  $('countin').textContent = '';
+  $('barbeat').textContent = `Chord ${lesson.index + 1} of ${lesson.steps.length}`;
+  const done = lesson.done ? lesson.steps.length : lesson.index;
+  $('progress-fill').style.width = `${(done / lesson.steps.length) * 100}%`;
+}
+
+// Play the chord once so you know what it should sound like; the lesson ignores it.
+function hearChord() {
+  if (!lesson) return;
+  ensureAudio();
+  const t = audio.ctx.currentTime + 0.05;
+  audio.playEvent(strumEvent(lesson.shape, 0, 'D'), t);
+  lesson.mute(t + 2.5);
+  const played = lesson.shape.frets.map((f, i) => (f >= 0 ? i : -1)).filter((i) => i >= 0);
+  played.forEach((i) => guitar.pluck(i, 0.8));
 }
 
 // ---- HUD -------------------------------------------------------------------
@@ -313,6 +432,19 @@ function frame() {
   let beat = beatAt(t);
   const song = state.song;
 
+  if (lesson) {
+    mic.update(t);
+    lesson.update(t);
+    $('lesson-level').style.width = `${Math.min(100, mic.level * 400)}%`;
+    const view = lesson.view(t);
+    cues.update(view.song, view.beat, view.lookBeats, dt);
+    guitar.update(dt);
+    updateLessonHud();
+    controls.update();
+    renderer.render(scene, camera);
+    return;
+  }
+
   if (state.playing) {
     const horizon = beatAt(t + 0.12);
     if (horizon > state.scheduledBeat) {
@@ -367,13 +499,33 @@ const select = $('song-select');
 SONGS.forEach((s, i) => select.add(new Option(s.title, i)));
 select.addEventListener('change', () => { loadSong(SONGS[select.value]); select.blur(); });
 
+const lessonSelect = $('lesson-select');
+LESSONS.forEach((l, i) => lessonSelect.add(new Option(`${i + 1}. ${l.title}`, i)));
+$('lesson-start').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
+$('start-lessons').addEventListener('click', () => startLesson(Number(lessonSelect.value)));
+$('lesson-hear').addEventListener('click', hearChord);
+$('lesson-skip').addEventListener('click', () => lesson?.skip());
+$('lesson-next').addEventListener('click', () => startLesson(lessonIndex() + 1));
+$('lesson-exit').addEventListener('click', () => {
+  exitLesson();
+  $('panel').classList.add('open');
+});
+
 $('start').addEventListener('click', () => {
+  exitLesson();
   $('results').innerHTML = '';
   if (state.anchorBeat >= state.song.length) restart();
   else play();
 });
-$('play').addEventListener('click', () => (state.playing ? pause() : play()));
-$('restart').addEventListener('click', restart);
+$('play').addEventListener('click', () => {
+  exitLesson();
+  if (state.playing) pause();
+  else play();
+});
+$('restart').addEventListener('click', () => {
+  exitLesson();
+  restart();
+});
 $('speed').addEventListener('input', (e) => setSpeed(Number(e.target.value)));
 $('look').addEventListener('input', (e) => {
   state.lookSec = Number(e.target.value);
@@ -403,6 +555,10 @@ $('progress').addEventListener('click', (e) => {
 
 window.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (lesson || document.body.classList.contains('lesson-mode')) {
+    if (e.code === 'Escape') $('lesson-exit').click();
+    return;
+  }
   const bpb = state.song.beatsPerBar;
   if (e.code === 'Space') {
     e.preventDefault();
@@ -420,4 +576,4 @@ window.addEventListener('keydown', (e) => {
 
 loadSong(SONGS[0]);
 requestAnimationFrame(frame);
-if (selfTest) window.fretview = { state, camera, controls, get mic() { return mic; } };
+if (selfTest) window.fretview = { state, camera, controls, CHORDS, get mic() { return mic; }, get audio() { return audio; }, get lesson() { return lesson; } };

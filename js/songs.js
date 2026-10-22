@@ -11,6 +11,8 @@ export const CHORDS = {
   C:  { frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0] },
   D:  { frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2] },
   F:  { frets: [-1, -1, 3, 2, 1, 1], fingers: [0, 0, 3, 2, 1, 1] },
+  A:  { frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0] },
+  Dm: { frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] },
 };
 
 const STRUMS = {
@@ -31,7 +33,7 @@ function addLeft(left, beat, dur, name, shape) {
   else left.push({ beat, dur, name, shape });
 }
 
-function strumEvent(shape, beat, dir) {
+export function strumEvent(shape, beat, dir) {
   let strings = playedStrings(shape.frets);
   // Up strums only catch the treble strings, travelling high -> low.
   if (dir === 'U') strings = strings.slice(-4).reverse();

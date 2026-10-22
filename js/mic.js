@@ -1,4 +1,9 @@
-import { midiOf, hzToMidi } from './music.js';
+import { midiOf, midiToHz, hzToMidi } from './music.js';
+
+// Chord lessons: minimum similarity, lead over the closest other chord, level below which a
+// string counts as silent (its fundamental, relative to the loudest string's), and how long to
+// listen after a strum.
+export const LESSON = { sim: 0.75, margin: 0.02, missing: 0.05, wait: 0.62 };
 
 // Listens to the microphone and judges right-hand events:
 //   - onsets (a string was struck) from spectral flux / level jumps,
@@ -34,13 +39,19 @@ export class MicJudge {
     this.slow = this.ctx.createAnalyser();
     this.slow.fftSize = 8192;
     this.slow.smoothingTimeConstant = 0;
+    // Long window, used only by the lessons: fine enough to tell neighbouring low notes apart.
+    this.fine = this.ctx.createAnalyser();
+    this.fine.fftSize = 16384;
+    this.fine.smoothingTimeConstant = 0;
     src.connect(this.fast);
     src.connect(this.slow);
+    src.connect(this.fine);
     this.src = src;
     this.td = new Float32Array(this.fast.fftSize);
     this.fd = new Float32Array(this.fast.frequencyBinCount);
     this.prevMag = new Float32Array(this.fast.frequencyBinCount).fill(-90);
     this.sfd = new Float32Array(this.slow.frequencyBinCount);
+    this.ffd = new Float32Array(this.fine.frequencyBinCount);
     this.active = true;
   }
 
@@ -48,6 +59,7 @@ export class MicJudge {
     this.stream?.getTracks().forEach((t) => t.stop());
     this.src?.disconnect(this.fast);
     this.src?.disconnect(this.slow);
+    this.src?.disconnect(this.fine);
     this.active = false;
     this.frames = [];
   }
@@ -98,9 +110,21 @@ export class MicJudge {
       }
     }
 
+    let fine = null;
+    if (gate) {
+      this.fine.getFloatFrequencyData(this.ffd);
+      fine = new Float32Array(12);
+      const bin = sr / this.fine.fftSize;
+      for (let k = Math.ceil(75 / bin); k < Math.min(this.ffd.length, 1400 / bin); k++) {
+        const pc = ((Math.round(hzToMidi(k * bin)) % 12) + 12) % 12;
+        fine[pc] += Math.pow(10, this.ffd[k] / 20);
+      }
+    }
+
     this.level = rms;
     this.pitch = pitch;
-    this.frames.push({ t, rms, flux, onset, pitch, chroma });
+    const amps = fine && this.expected ? this.fundamentals(this.expected) : null;
+    this.frames.push({ t, rms, flux, onset, pitch, chroma, fine, amps });
     while (this.frames.length && this.frames[0].t < t - 3) this.frames.shift();
   }
 
@@ -121,6 +145,63 @@ export class MicJudge {
   // Judge once every frame needed for this event has been captured.
   readyAt(expected) {
     return expected + this.latency + 0.34;
+  }
+
+  // Detailed check of a strummed chord, for the lessons. Needs LESSON.wait seconds of audio after
+  // the onset. The chord passes if it matches well AND better than every other known chord
+  // (candidates: { name: frets }), which is what tells apart near-twins like Em / E or Am / A.
+  analyzeChord(onsetT, frets, candidates) {
+    // The fine analyser looks 0.34 s back, so start late enough that the previous chord is out of view.
+    const win = this.frames.filter((f) => f.t >= onsetT + 0.36 && f.t <= onsetT + LESSON.wait && f.fine);
+    if (win.length < 2) return null;
+    const avg = new Float32Array(12);
+    for (const f of win) for (let k = 0; k < 12; k++) avg[k] += f.fine[k];
+    const sim = cosine(avg, chordTemplate(frets));
+
+    let rival = null, rivalSim = -1;
+    for (const [name, other] of Object.entries(candidates)) {
+      if (other.join() === frets.join()) continue;
+      const c = cosine(avg, chordTemplate(other));
+      if (c > rivalSim) { rival = name; rivalSim = c; }
+    }
+
+    const missing = this.silentStrings(frets, win);
+
+    const ok = sim >= LESSON.sim && sim - rivalSim >= LESSON.margin && missing.length === 0;
+    return { ok, sim, rival, rivalSim, missing };
+  }
+
+  // The lessons say which chord they expect, so every frame can measure each string's fundamental.
+  expect(frets) {
+    this.expected = frets;
+  }
+
+  // Amplitude of each sounding string's fundamental in the fine spectrum (this.ffd).
+  fundamentals(frets) {
+    const bin = this.ctx.sampleRate / this.fine.fftSize;
+    const out = {};
+    for (let s = 0; s < 6; s++) {
+      if (!(frets[s] >= 0)) continue;
+      const hz = midiToHz(midiOf(s, frets[s]));
+      let m = 0;
+      for (let k = Math.floor((hz * 0.985) / bin); k <= Math.ceil((hz * 1.015) / bin); k++) {
+        m = Math.max(m, Math.pow(10, this.ffd[k] / 20));
+      }
+      out[s] = m;
+    }
+    return out;
+  }
+
+  // Strings whose fundamental is (nearly) absent. A string is only blamed when no other string has
+  // an overtone on the same frequency.
+  silentStrings(frets, win) {
+    const sounding = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] >= 0);
+    const amps = Object.fromEntries(sounding.map((s) => [s, 0]));
+    for (const f of win) for (const s of sounding) amps[s] += f.amps?.[s] ?? 0;
+    const ref = Math.max(...Object.values(amps)) || 1;
+    const f0 = Object.fromEntries(sounding.map((s) => [s, midiToHz(midiOf(s, frets[s]))]));
+    const masked = (s) => sounding.some((o) => o !== s && [1, 2, 3, 4, 5, 6].some((h) => Math.abs((f0[o] * h) / f0[s] - 1) < 0.02));
+    return sounding.filter((s) => amps[s] < LESSON.missing * ref && !masked(s));
   }
 
   pitchMatches(ev, onsetT) {
@@ -147,14 +228,23 @@ export class MicJudge {
       const peak = Math.max(...rise);
       return peak > 0 && rise[want % 12] >= peak * 0.6;
     }
-    const tmpl = new Float32Array(12);
-    for (const s of ev.strings) {
-      const f = ev.frets[s];
-      if (f != null && f >= 0) tmpl[midiOf(s, f) % 12] += 1;
-    }
+    const tmpl = chordTemplate(ev.frets, ev.strings);
     const sim = Math.max(cosine(now, tmpl), cosine(rise, tmpl));
     return sim >= (ev.dir === 'U' ? 0.5 : 0.6);
   }
+}
+
+// Expected 12-bin chroma for a set of strings, including the first overtones of each note:
+// a real string's 3rd harmonic (a fifth up) and 5th (a major third up) are clearly audible.
+export function chordTemplate(frets, strings = [0, 1, 2, 3, 4, 5]) {
+  const t = new Float32Array(12);
+  for (const s of strings) {
+    const f = frets[s];
+    if (f == null || f < 0) continue;
+    const m = midiOf(s, f);
+    for (let h = 1; h <= 6; h++) t[Math.round(m + 12 * Math.log2(h)) % 12] += 1 / Math.sqrt(h);
+  }
+  return t;
 }
 
 function cosine(a, b) {

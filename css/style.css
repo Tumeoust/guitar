@@ -131,10 +131,36 @@ input[type=range] { accent-color: var(--accent); }
   100% { transform: translateY(-40px) scale(1); opacity: 0; }
 }
 
+/* Lesson box */
+#lesson {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+  width: min(520px, calc(100% - 32px));
+  padding: 14px 16px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+  backdrop-filter: blur(6px);
+  display: flex; flex-direction: column; gap: 8px;
+}
+#lesson[hidden] { display: none; }
+#lesson p { margin: 0; color: var(--muted); }
+.lesson-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+#lesson-dots { display: flex; gap: 5px; }
+#lesson-dots span { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.15); }
+#lesson-dots span.done { background: #3ddc84; }
+#lesson-dots span.now { background: var(--accent); box-shadow: 0 0 0 3px rgba(76, 201, 240, 0.3); }
+#lesson-status { font-size: 18px; font-weight: 700; min-height: 1.4em; }
+#lesson-status.ok { color: #3ddc84; }
+#lesson-status.bad { color: #ffb627; }
+#lesson .meter { margin: 0; }
+#lesson-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
+@media (max-width: 1250px) { body.lesson-mode #legend { display: none; } }
+.start-row { justify-content: center; margin-top: 8px; }
+.start-row button { flex: 0 1 auto; }
+
 /* Start / results overlay */
 #overlay {
   position: fixed; inset: 0;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: safe center; justify-content: center;
+  overflow-y: auto;
   background: rgba(5, 7, 12, 0.6);
   padding: 16px;
 }
@@ -168,6 +194,7 @@ input[type=range] { accent-color: var(--accent); }
 }
 
 @media (max-height: 500px) {
+  #lesson p { display: none; }
   #hud { flex-wrap: nowrap; padding: 6px 12px 10px; gap: 14px; }
   #hud .song { flex-basis: auto; }
   #song-sub, #legend { display: none; }

@@ -36,6 +36,13 @@
   <aside id="panel" class="open">
     <button id="panel-toggle" class="icon" title="Show / hide settings">☰</button>
     <div class="panel-body">
+      <h3>Chord lessons</h3>
+      <label class="field">Lesson
+        <select id="lesson-select"></select>
+      </label>
+      <button id="lesson-start" class="primary">🎓 Start lesson</button>
+
+      <h3>Play along</h3>
       <label class="field">Song
         <select id="song-select"></select>
       </label>
@@ -49,7 +56,7 @@
       <label class="field">Look-ahead <span id="look-val">2.4 s</span>
         <input id="look" type="range" min="1.2" max="4" step="0.2" value="2.4">
       </label>
-      <label class="check"><input id="guide" type="checkbox" checked> Play-along guitar sound</label>
+      <label class="check"><input id="guide" type="checkbox"> Play-along guitar sound</label>
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
       <label class="check"><input id="loop" type="checkbox"> Loop song</label>
       <div class="row">
@@ -91,17 +98,37 @@
 
   <div id="feedback"></div>
 
+  <section id="lesson" hidden>
+    <div class="lesson-head">
+      <span id="lesson-step" class="muted small"></span>
+      <div id="lesson-dots"></div>
+    </div>
+    <p id="lesson-tip"></p>
+    <div id="lesson-status"></div>
+    <div class="meter" title="Microphone level"><div id="lesson-level"></div></div>
+    <div class="row">
+      <button id="lesson-hear" title="Play the chord once (the microphone ignores it)">🔊 Hear it</button>
+      <button id="lesson-skip">Skip</button>
+      <button id="lesson-next" class="primary" hidden>Next lesson →</button>
+      <button id="lesson-exit">Exit</button>
+    </div>
+  </section>
+
   <div id="overlay">
     <div class="card">
       <h1>Fretview</h1>
       <p>Play along on a real guitar. You see the guitar the way you see your own when you look down at it:
         headstock on the left, thickest string closest to you.</p>
       <ul>
+        <li><b>Chord lessons:</b> learn one chord at a time. The microphone listens and tells you when it sounds right, or which string needs fixing.</li>
         <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where. The next shape fades in with a shrinking ring.</li>
         <li><b>Right hand:</b> arrows and dots slide towards the white line over the soundhole. Strum or pick when they reach it.</li>
       </ul>
       <p class="muted small">Space = play / pause · R = restart · ← / → = jump a bar · drag to move the camera</p>
-      <button id="start" class="primary big">Start</button>
+      <div class="row start-row">
+        <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
+        <button id="start" class="big">▶ Play songs</button>
+      </div>
       <div id="results"></div>
     </div>
   </div>
