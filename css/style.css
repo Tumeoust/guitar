@@ -74,6 +74,28 @@ body:has(#panel.open) #hud { right: 312px; }
 #panel:not(.open) { bottom: auto; width: 46px; height: 46px; overflow: hidden; }
 #panel:not(.open) .panel-body { display: none; }
 #panel.open .panel-body { padding-top: 44px; }
+/* While playing (and counting down) the settings get out of the way; only a pause button stays. */
+body.playing #panel { display: none; }
+#pause-fab { display: none; position: fixed; top: 20px; right: 20px; z-index: 5; }
+body.playing #pause-fab { display: block; }
+
+#countdown {
+  position: fixed; inset: 0; z-index: 4; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+}
+#countdown[hidden] { display: none; }
+#countdown-num {
+  font-size: min(30vh, 200px); font-weight: 800; line-height: 1; color: #fff;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, .7);
+}
+#countdown-num.tick { animation: countdown-tick 1s ease-out; }
+#countdown .muted { font-size: 18px; text-shadow: 0 2px 10px rgba(0, 0, 0, .8); }
+@keyframes countdown-tick {
+  0% { transform: scale(1.5); opacity: 0; }
+  20% { transform: scale(1); opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: scale(.85); opacity: .15; }
+}
 .panel-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
 .panel-body h3 { margin: 8px 0 0; font-size: 14px; }
 .panel-body p { margin: 0; }

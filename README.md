@@ -40,6 +40,8 @@ How the check works (`MicJudge.analyzeChord` in `js/mic.js`):
 ## Songs
 
 The game is silent by default. The play-along guitar sound can be switched on in the settings.
+Pressing Play hides the settings and counts down 3, 2, 1 on screen before the song starts. The ❚❚ button
+in the corner (or Space) pauses and brings the settings back.
 
 **Practice speeds.** Every song can be played at 25 %, 50 %, 75 % or 100 % speed. Below 100 %, the song stops at
 the start of each bar and waits until the microphone hears the chord played right; the same feedback as in the

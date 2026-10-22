@@ -68,6 +68,7 @@ resize();
 const state = {
   song: SONGS[0],
   playing: false,
+  countdownEnd: null, // performance.now() ms at which the 3-2-1 before playing ends
   anchorTime: 0,
   anchorBeat: 0,
   speed: 1,
@@ -103,6 +104,9 @@ const timeOfBeat = (b) => state.anchorTime + (b - state.anchorBeat) / beatsPerSe
 const practiceMode = () => state.speed < 0.999 && !!mic?.active;
 // Practice mode stops at the first chord anyway, so a long count-in at 25 % speed would only be in the way.
 const countInBeats = () => (state.speed < 0.999 ? 1 : state.song.beatsPerBar);
+const COUNTDOWN_SEC = 3;
+const counting = () => state.countdownEnd != null;
+const running = () => state.playing || counting();
 // The microphone needs a moment to judge a note, so in practice mode the cues keep flowing past the
 // line for this long (from the cue's beat) before the clock stops and waits.
 const graceSec = (ev) => (ev.kind === 'pick' ? 0.25 : LESSON.wait) + 0.5;
@@ -130,7 +134,9 @@ function anchor(beat) {
   state.lastWaitBeat = beat - 1e-6;
 }
 
+// Starts the 3-2-1 countdown; frame() calls startPlaying() when it runs out.
 function play() {
+  if (running()) return;
   ensureAudio();
   if (state.speed < 0.999 && !mic?.active) {
     enableMic().then((err) => err && setPracticeStatus(`${err}. The song won't wait for you.`, 'bad'));
@@ -140,12 +146,36 @@ function play() {
     state.anchorBeat = -countInBeats();
     resetStats();
   }
+  state.countdownEnd = performance.now() + COUNTDOWN_SEC * 1000;
+  updatePlayButton();
+}
+
+function startPlaying() {
+  state.countdownEnd = null;
+  $('countdown').hidden = true;
   anchor(state.anchorBeat);
   state.playing = true;
   updatePlayButton();
 }
 
+function showCountdown(n) {
+  const el = $('countdown-num');
+  $('countdown').hidden = false;
+  if (el.textContent === String(n)) return;
+  el.textContent = n;
+  el.classList.remove('tick');
+  void el.offsetWidth; // restart the animation
+  el.classList.add('tick');
+}
+
 function pause() {
+  if (counting()) {
+    state.countdownEnd = null;
+    $('countdown').hidden = true;
+    $('countdown-num').textContent = '';
+    updatePlayButton();
+    return;
+  }
   if (!state.playing) return;
   // Resume an unfinished wait point from its cue rather than skipping it.
   state.anchorBeat = state.waiting ? state.waiting.beat : beatAt(clockNow());
@@ -191,9 +221,11 @@ function setSpeed(pct) {
 }
 
 function updatePlayButton() {
-  $('play').textContent = state.playing ? '❚❚ Pause' : '▶ Play';
-  // Fold the settings away while playing so the whole guitar is visible.
-  $('panel').classList.toggle('open', !state.playing);
+  const on = running();
+  $('play').textContent = on ? '❚❚ Pause' : '▶ Play';
+  // Hide the settings while playing so the whole guitar is visible; they come back on pause.
+  document.body.classList.toggle('playing', on);
+  $('panel').classList.toggle('open', !on);
 }
 
 // ---- Audio scheduling ------------------------------------------------------
@@ -535,6 +567,12 @@ function frame() {
   const dt = Math.min(0.1, (nowMs - lastFrame) / 1000);
   lastFrame = nowMs;
 
+  if (counting()) {
+    const left = (state.countdownEnd - nowMs) / 1000;
+    if (left <= 0) startPlaying();
+    else showCountdown(Math.ceil(left));
+  }
+
   const t = clockNow();
   let beat = beatAt(t);
   const song = state.song;
@@ -650,9 +688,10 @@ $('start').addEventListener('click', () => {
 });
 $('play').addEventListener('click', () => {
   exitLesson();
-  if (state.playing) pause();
+  if (running()) pause();
   else play();
 });
+$('pause-fab').addEventListener('click', pause);
 $('restart').addEventListener('click', () => {
   exitLesson();
   restart();
@@ -700,7 +739,7 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'Space') {
     e.preventDefault();
     if (!$('overlay').hidden) $('start').click();
-    else if (state.playing) pause();
+    else if (running()) pause();
     else play();
   } else if (e.code === 'KeyR') restart();
   else if (e.code === 'ArrowRight' || e.code === 'ArrowLeft') {
