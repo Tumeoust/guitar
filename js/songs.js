@@ -123,6 +123,17 @@ function onePhrase(pattern) {
   return [['Bm', pattern], ['G', pattern], ['Bm', pattern], ['G', pattern], ['Bm', pattern], ['D', pattern], ['G', pattern, 2]];
 }
 
+// I See Fire (Ed Sheeran), the version with a capo on the 6th fret: each section's chord changes, one chord
+// per bar. G/B is played as a plain G, and the A at the end of the chorus is left out.
+function iSeeFire() {
+  const bars = (chords, pattern) => chords.map((c) => [c, pattern]);
+  const intro = bars(['Em', 'C', 'D', 'Em', 'Em', 'C', 'D', 'Em'], 'whole');
+  const verse = bars(['Em', 'G', 'D', 'C', 'C', 'Am', 'G', 'C'], 'ballad');
+  const chorus = bars(['Em', 'C', 'D', 'Em', 'Em', 'C', 'D', 'Em'], 'campfire');
+  const bridge = bars(['Am', 'Em', 'G', 'D', 'Am', 'Em', 'G', 'D', 'Am', 'G', 'C', 'D'], 'quarters');
+  return [...intro, ...verse, ...chorus, ...verse, ...chorus, ...bridge, ...chorus, ['Em', 'whole']];
+}
+
 function warmup() {
   const notes = [];
   for (let s = 0; s < 6; s++) for (let f = 1; f <= 4; f++) notes.push([s, f, f, 1]);
@@ -189,12 +200,18 @@ export const SONGS = [
     { id: 'one', title: 'One', subtitle: 'Metallica — the clean intro simplified to Bm – G – D, no barre chords', bpm: 72, beatsPerBar: 4 },
     [...onePhrase('whole'), ...onePhrase('ballad'), ...onePhrase('ballad'), ...onePhrase('ballad'), ['Bm', 'whole']],
   ),
+  // I See Fire (Ed Sheeran): only the chords and a strum pattern for each section, no melody or lyrics.
+  strumSong(
+    { id: 'i-see-fire', title: 'I See Fire', subtitle: 'Ed Sheeran — capo on the 6th fret, Em – C – D – G – Am', bpm: 76, beatsPerBar: 4, capo: 6 },
+    iSeeFire(),
+  ),
   drillSong({ id: 'drill-em-am', title: 'Change drill: Em ↔ Am', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Em', 'Am']),
   drillSong({ id: 'drill-g-c', title: 'Change drill: G ↔ C', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'C']),
   drillSong({ id: 'drill-g-d', title: 'Change drill: G ↔ D', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'D']),
   drillSong({ id: 'drill-g-c-d', title: 'Change drill: G – C – G – D', subtitle: 'The changes in Amazing Grace, with fewer free beats each round' }, ['G', 'C', 'G', 'D']),
   drillSong({ id: 'drill-campfire', title: 'Change drill: G – Em – C – D', subtitle: 'The changes in Campfire Strum, with fewer free beats each round' }, ['G', 'Em', 'C', 'D']),
   drillSong({ id: 'drill-cinnamon', title: 'Change drill: C – Em – D – Am', subtitle: 'The changes in Cinnamon Girl, with fewer free beats each round' }, ['C', 'Em', 'D', 'Am']),
+  drillSong({ id: 'drill-i-see-fire', title: 'Change drill: Em – C – D', subtitle: 'The chorus changes in I See Fire, with fewer free beats each round' }, ['Em', 'C', 'D']),
   drillSong({ id: 'drill-bm-g', title: 'Change drill: Bm ↔ G', subtitle: 'The main change in One, with fewer free beats each round' }, ['Bm', 'G']),
   drillSong({ id: 'drill-am-e', title: 'Change drill: Am ↔ E', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Am', 'E']),
 ];

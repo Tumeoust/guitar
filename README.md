@@ -165,6 +165,9 @@ The settings panel folds away while a song plays, and comes back when you pause.
   pattern, no melody or lyrics.
 - One (Metallica): the clean intro simplified to Bm – G – D, with an easy four-string Bm (no barre). Only the
   chords and a strum pattern, no melody or lyrics.
+- I See Fire (Ed Sheeran): the version with a capo on the 6th fret, using the Em, C, D, G and Am shapes. Intro, verses,
+  choruses and bridge, one chord per bar, with G/B played as G. Only the chords and a strum pattern, no melody or
+  lyrics.
 
 A song can set `capo`. The dots and fret numbers then count from the capo, the way chord sheets write it,
 and the play-along sound and the microphone check use the pitches the capo gives. The HUD shows a *Capo* badge.
