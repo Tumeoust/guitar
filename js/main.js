@@ -45,6 +45,8 @@ const VIEWS = {
 let currentView = 'player';
 function setView(name) {
   currentView = name;
+  $('view-player')?.classList.toggle('on', name === 'player');
+  $('view-top')?.classList.toggle('on', name === 'top');
   const v = VIEWS[name];
   // The views are framed for a 16:9-ish window; back off on narrower ones so the whole guitar fits.
   const back = Math.max(1, 1.6 / camera.aspect);
@@ -89,10 +91,21 @@ const state = {
   practice: null,
   lessonSong: null, // index in LESSONS while a change drill from the lessons is playing
 };
+// Settings the player picks are remembered between visits. Drills from the lessons override some of
+// them while they play (see startDrill); applySettings() puts the player's own choice back.
+const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true };
+try { Object.assign(settings, JSON.parse(localStorage.getItem('fretview.settings'))); } catch { /* storage unavailable */ }
+function saveSetting(name, value) {
+  settings[name] = value;
+  try { localStorage.setItem('fretview.settings', JSON.stringify(settings)); } catch { /* storage unavailable */ }
+}
+
 let audio = null;
 let mic = null;
 let lesson = null; // a LessonRunner while in lesson mode
 let autoNext = null; // timer that starts the next lesson
+let retryLesson = 0; // the lesson to start again once the microphone works
+let noMicView = null; // what the neck shows while a lesson waits for the microphone
 let sensitivity = 5;
 try { sensitivity = Number(localStorage.getItem('fretview.sensitivity')) || 5; } catch { /* storage unavailable */ }
 // ?selftest feeds the play-along synth into the detector instead of the microphone.
@@ -140,7 +153,7 @@ function play() {
   if (running()) return;
   ensureAudio();
   if (state.speed < 0.999 && !mic?.active) {
-    enableMic().then((err) => err && setPracticeStatus(`${err}. The song won't wait for you.`, 'bad'));
+    enableMic().then((err) => err && showToast(`${err}. The song plays on without waiting for you.`));
   }
   hideMenu();
   if (state.anchorBeat >= state.song.length) {
@@ -178,8 +191,11 @@ function pause() {
     return;
   }
   if (!state.playing) return;
-  // Resume an unfinished wait point from its cue rather than skipping it.
-  state.anchorBeat = state.waiting ? state.waiting.beat : beatAt(clockNow());
+  // Resume an unfinished wait point from its cue rather than skipping it, and anything else from the
+  // start of its bar: after the 3-2-1 it is hard to come back in halfway through a bar.
+  const beat = beatAt(clockNow()), bpb = state.song.beatsPerBar;
+  state.anchorBeat = state.waiting ? state.waiting.beat
+    : beat <= 0 ? -countInBeats() : Math.min(state.song.length, Math.floor(beat / bpb) * bpb);
   state.playing = false;
   state.waiting = null;
   audio?.stopAll();
@@ -216,7 +232,11 @@ function setSpeed(pct) {
   state.speed = pct / 100;
   state.waiting = null;
   document.querySelectorAll('.speeds button').forEach((el) => el.classList.toggle('on', Number(el.dataset.speed) === pct));
-  if (state.speed < 0.999 && state.playing && !mic?.active) enableMic();
+  if (state.speed < 0.999 && state.playing && !mic?.active) {
+    enableMic().then((err) => err && showToast(`${err}. The song plays on without waiting for you.`));
+  }
+  $('speed-badge').hidden = pct === 100;
+  $('speed-badge').textContent = `${pct}% speed`;
   if (state.playing) {
     state.anchorBeat = b;
     state.anchorTime = clockNow();
@@ -308,7 +328,7 @@ async function enableMic() {
   try {
     await mic.start(selfTest ? audio.guide : undefined);
   } catch (err) {
-    return `Could not open the microphone: ${err.message}`;
+    return micErrorText(err);
   }
   mic.setSensitivity(sensitivity);
   mic.latency = Number($('latency').value) / 1000;
@@ -322,6 +342,25 @@ async function enableMic() {
   return null;
 }
 
+function micErrorText(err) {
+  if (!window.isSecureContext) return 'The microphone only works when the page is opened over HTTPS';
+  if (!navigator.mediaDevices?.getUserMedia) return 'This browser can\'t use the microphone';
+  if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+    return 'The microphone is blocked. Allow it for this site (usually from the icon in the address bar), then try again';
+  }
+  if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') return 'No microphone was found';
+  if (err.name === 'NotReadableError') return 'Another app is using the microphone. Close it there and try again';
+  return `Could not open the microphone (${err.message})`;
+}
+
+let toastTimer = null;
+function showToast(text) {
+  $('toast').textContent = text;
+  $('toast').hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { $('toast').hidden = true; }, 7000);
+}
+
 async function toggleMic() {
   if (mic?.active) {
     exitLesson();
@@ -331,7 +370,7 @@ async function toggleMic() {
     return;
   }
   const err = await enableMic();
-  if (err) alert(err);
+  if (err) showToast(`${err}.`);
 }
 
 // ---- Lessons ---------------------------------------------------------------
@@ -396,6 +435,7 @@ async function startLesson(i) {
     startDrill(i);
     return;
   }
+  if (state.lessonSong != null) applySettings();
   state.lessonSong = null;
   pause();
   hideMenu();
@@ -403,18 +443,30 @@ async function startLesson(i) {
   const err = await enableMic();
   document.body.classList.add('lesson-mode');
   $('lesson').hidden = false;
+  $('lesson').classList.toggle('no-mic', !!err);
+  $('song-title').textContent = LESSONS[i].title;
+  $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length}`;
+  setCapo(0);
+  $('capo').hidden = true;
+  setView('lesson');
   if (err) {
     lesson = null;
-    $('lesson-status').textContent = `${err}. Lessons need the microphone to hear your guitar.`;
+    retryLesson = i;
+    // Still show the chord, so the lesson can be looked at without the microphone.
+    const chord = LESSONS[i].chords[0];
+    noMicView = { beatsPerBar: 2, left: [{ beat: -1, dur: 1e9, name: chord, shape: CHORDS[chord] }], right: [] };
+    $('chord-now').textContent = chord;
+    $('barbeat').textContent = '';
+    $('progress-fill').style.width = '0%';
+    $('lesson-step').textContent = '';
+    $('lesson-dots').replaceChildren();
+    $('lesson-tip').textContent = 'Lessons listen to your guitar to check each chord, so they need the microphone.';
+    $('lesson-status').textContent = `${err}.`;
     $('lesson-status').className = 'bad';
     return;
   }
-  setCapo(0);
-  $('capo').hidden = true;
+  noMicView = null;
   lesson = new LessonRunner(LESSONS[i], mic, lessonUi);
-  setView('lesson');
-  $('song-title').textContent = lesson.lesson.title;
-  $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length}`;
   $('lesson-skip').hidden = false;
   $('lesson-next').hidden = true;
   renderLesson(lesson);
@@ -429,7 +481,7 @@ async function startDrill(i) {
   state.lessonSong = i;
   $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length} — ${LESSONS[i].tip}`;
   setSpeed(100);
-  $('metro').checked = state.metro = true;
+  state.metro = $('metro').checked = true;
   await enableMic(); // for grading; the drill plays without it too
   play();
 }
@@ -438,6 +490,7 @@ function exitLesson() {
   clearTimeout(autoNext);
   if (!document.body.classList.contains('lesson-mode')) return;
   lesson = null;
+  noMicView = null;
   mic?.expect(null);
   document.body.classList.remove('lesson-mode', 'race');
   $('lesson').hidden = true;
@@ -609,7 +662,7 @@ function showResults() {
     ? `<h2>Song complete</h2><p class="muted">${p.firstTry} of ${p.total} right on the first try</p>`
     : mic?.active && acc != null
       ? `<h2>${acc}% accuracy</h2><p class="muted">Best streak ${state.stats.best}</p>`
-      : '<h2>Song complete</h2>';
+      : `<h2>Song complete</h2>${mic?.active ? '' : '<p class="muted small">Switch on 🎤 Microphone feedback in the settings (☰) to have each strum graded.</p>'}`;
   const drill = state.lessonSong;
   if (drill != null) markLessonDone(drill);
   const next = drill == null ? -1 : drill + 1;
@@ -634,7 +687,15 @@ function showScreen(name) {
   for (const n of ['home', 'songs', 'lessons', 'results']) $(`screen-${n}`).hidden = n !== name;
   $('overlay').hidden = false;
   document.body.classList.add('menu');
-  if (name === 'songs') renderSongList();
+  if (name === 'songs') {
+    // Picking songs ends a drill from the lessons, and with it the settings the drill chose.
+    if (state.lessonSong != null) {
+      applySettings();
+      state.lessonSong = null;
+      loadSong(state.song); // drops the lesson's subtitle
+    }
+    renderSongList();
+  }
   if (name === 'lessons') renderLessonList();
   const focus = { songs: 'song-go', lessons: 'lesson-continue', results: $('results-next').hidden ? 'results-again' : 'results-next' }[name];
   if (focus) $(focus).focus({ preventScroll: true });
@@ -694,6 +755,7 @@ function renderSongList() {
 }
 
 function chooseSong(i) {
+  if (state.lessonSong != null) applySettings();
   state.lessonSong = null;
   select.value = i;
   if (SONGS[i] !== state.song) loadSong(SONGS[i]);
@@ -850,6 +912,13 @@ function frame() {
     render(dt);
     return;
   }
+  if (noMicView) {
+    cues.update(noMicView, 0, 2, dt);
+    guitar.markStrings(cues.shownShape?.frets);
+    guitar.update(dt);
+    render(dt);
+    return;
+  }
 
   if (state.playing && practiceMode() && !state.waiting) {
     const ev = song.right.find((e) => e.wait && e.beat > state.lastWaitBeat && e.beat <= beat);
@@ -983,20 +1052,49 @@ $('restart').addEventListener('click', () => {
   restart();
 });
 document.querySelectorAll('.speeds button').forEach((el) => {
-  el.addEventListener('click', () => setSpeed(Number(el.dataset.speed)));
+  el.addEventListener('click', () => {
+    setSpeed(Number(el.dataset.speed));
+    saveSetting('speed', Number(el.dataset.speed));
+  });
 });
+function setLook(sec) {
+  state.lookSec = sec;
+  $('look').value = sec;
+  $('look-val').textContent = `${sec.toFixed(1)} s`;
+}
 $('look').addEventListener('input', (e) => {
-  state.lookSec = Number(e.target.value);
-  $('look-val').textContent = `${state.lookSec.toFixed(1)} s`;
+  setLook(Number(e.target.value));
+  saveSetting('look', state.lookSec);
 });
 // The play-along sound can be switched in the song picker and in the settings.
+function setGuide(on) {
+  state.guide = on;
+  document.querySelectorAll('.guide').forEach((el) => { el.checked = on; });
+  if (!on) audio?.stopAll();
+}
 document.querySelectorAll('.guide').forEach((el) => el.addEventListener('change', () => {
-  state.guide = el.checked;
-  document.querySelectorAll('.guide').forEach((other) => { other.checked = state.guide; });
-  if (!state.guide) audio?.stopAll();
+  setGuide(el.checked);
+  saveSetting('guide', el.checked);
 }));
-$('metro').addEventListener('change', (e) => { state.metro = e.target.checked; });
-$('loop').addEventListener('change', (e) => { state.loop = e.target.checked; });
+$('metro').addEventListener('change', (e) => {
+  state.metro = e.target.checked;
+  saveSetting('metro', state.metro);
+});
+$('loop').addEventListener('change', (e) => {
+  state.loop = e.target.checked;
+  saveSetting('loop', state.loop);
+});
+
+function applySettings() {
+  setSpeed(settings.speed);
+  setGuide(settings.guide);
+  setLook(settings.look);
+  state.metro = $('metro').checked = settings.metro;
+  state.loop = $('loop').checked = settings.loop;
+  $('check-pitch').checked = settings.checkPitch;
+  $('latency').value = settings.latency;
+  $('lat-val').textContent = `${settings.latency} ms`;
+}
 $('view-player').addEventListener('click', () => setView('player'));
 $('view-top').addEventListener('click', () => setView('top'));
 $('magnify').addEventListener('change', (e) => setMagnify(e.target.checked));
@@ -1005,12 +1103,22 @@ $('zoom-close').addEventListener('click', () => setMagnify(false));
 setMagnify(magnify);
 $('panel-toggle').addEventListener('click', () => $('panel').classList.toggle('open'));
 $('mic-toggle').addEventListener('click', toggleMic);
-$('check-pitch').addEventListener('change', (e) => { if (mic) mic.checkPitch = e.target.checked; });
+$('check-pitch').addEventListener('change', (e) => {
+  if (mic) mic.checkPitch = e.target.checked;
+  saveSetting('checkPitch', e.target.checked);
+});
 $('latency').addEventListener('input', (e) => {
   $('lat-val').textContent = `${e.target.value} ms`;
   if (mic) mic.latency = Number(e.target.value) / 1000;
+  saveSetting('latency', Number(e.target.value));
+});
+$('lesson-retry').addEventListener('click', () => startLesson(retryLesson));
+// Switching to another tab or app pauses the song, so it isn't over by the time you come back.
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && running()) pause();
 });
 $('progress').addEventListener('click', (e) => {
+  if (document.body.classList.contains('lesson-mode')) return;
   const r = e.currentTarget.getBoundingClientRect();
   const bpb = state.song.beatsPerBar;
   const target = Math.floor((((e.clientX - r.left) / r.width) * state.song.length) / bpb) * bpb;
@@ -1018,7 +1126,10 @@ $('progress').addEventListener('click', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'SELECT' || (e.target.tagName === 'INPUT' && e.code !== 'Escape')) return;
+  // Selects and sliders keep their own arrow keys; on a checkbox Space plays rather than ticking it.
+  const t = e.target;
+  if (t.tagName === 'SELECT' && e.code !== 'Escape') return;
+  if (t.tagName === 'INPUT' && t.type === 'range' && e.code.startsWith('Arrow')) return;
   if (e.code === 'KeyM') {
     setMagnify(!magnify);
     return;
@@ -1061,6 +1172,7 @@ let savedSong = null;
 try { savedSong = SONGS.find((song) => song.id === localStorage.getItem('fretview.song')); } catch { /* storage unavailable */ }
 select.value = SONGS.indexOf(savedSong ?? SONGS[0]);
 loadSong(savedSong ?? SONGS[0]);
+applySettings();
 showScreen('home');
 requestAnimationFrame(frame);
 if (selfTest) window.fretview = { state, camera, controls, CHORDS, get mic() { return mic; }, get audio() { return audio; }, get lesson() { return lesson; } };

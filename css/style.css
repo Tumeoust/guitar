@@ -52,7 +52,11 @@ button.icon { padding: 4px 10px; }
   margin-left: 6px; padding: 1px 8px; border-radius: 6px; vertical-align: 2px;
   background: #ffd166; color: #0b0d12; font-size: 12px; font-weight: 800;
 }
-#capo[hidden] { display: none; }
+#capo[hidden], #speed-badge[hidden] { display: none; }
+#speed-badge {
+  margin-left: 4px; padding: 1px 8px; border-radius: 6px; vertical-align: 2px;
+  background: var(--accent); color: #06121a; font-size: 12px; font-weight: 800;
+}
 #countdown-capo { color: #ffd166; font-weight: 700; }
 #song-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hud .chords { display: flex; gap: 22px; font-size: 16px; }
@@ -189,12 +193,26 @@ body:has(#panel.open) #zoom-fab, body.magnify #zoom-fab { display: none; }
   display: flex; flex-direction: column; gap: 8px;
 }
 #lesson[hidden], #practice[hidden] { display: none; }
+#lesson-retry, #lesson.no-mic .lesson-mic, #lesson.no-mic #lesson-hear, #lesson.no-mic #lesson-skip { display: none; }
+#lesson.no-mic #lesson-retry { display: block; }
+body.lesson-mode #progress { cursor: default; }
+body.lesson-mode #progress[title] { pointer-events: none; }
+
+#toast {
+  position: fixed; left: 50%; top: 96px; transform: translateX(-50%); z-index: 6;
+  width: max-content; max-width: calc(100% - 32px); padding: 10px 16px;
+  background: #2a2112; border: 1px solid #ffb627; color: #ffd98a; border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+}
+#toast[hidden] { display: none; }
+/* Keyboard shortcuts mean nothing on a touch screen. */
+@media (hover: none) and (pointer: coarse) { .card .keys { display: none; } }
 #practice-status { font-size: 18px; font-weight: 700; min-height: 1.4em; }
 #practice-status.ok { color: #3ddc84; }
 #practice-status.bad { color: #ffb627; }
 #practice-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
 .speeds button { padding: 6px 0; }
-.speeds button.on { background: var(--accent); color: #06121a; border-color: transparent; font-weight: 700; }
+.speeds button.on, .views button.on { background: var(--accent); color: #06121a; border-color: transparent; font-weight: 700; }
 #practice .meter { margin: 0; flex: 1; }
 #lesson p { margin: 0; color: var(--muted); }
 .lesson-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
