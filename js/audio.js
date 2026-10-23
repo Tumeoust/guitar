@@ -40,23 +40,31 @@ export class GuitarAudio {
     const len = Math.floor(sr * 3);
     const buf = this.ctx.createBuffer(1, len, sr);
     const out = buf.getChannelData(0);
-    // The two-point average adds half a sample of delay, so shorten the loop to stay in tune.
-    const n = Math.max(2, Math.round(sr / midiToHz(midi) - 0.5));
-    const ring = new Float32Array(n);
+    // One period is n samples of delay, plus half a sample from the two-point average, plus a
+    // fractional delay from a first-order allpass, so the note is in tune to a fraction of a cent.
+    const period = sr / midiToHz(midi);
+    const n = Math.max(2, Math.floor(period - 0.6));
+    const frac = period - 0.5 - n; // 0.1 .. 1.1: where the allpass is flattest
+    const c = (1 - frac) / (1 + frac);
+    const init = Math.min(len, n + 1);
     let prev = 0, mean = 0;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < init; i++) {
       prev = prev * 0.45 + (Math.random() * 2 - 1) * 0.55;
-      ring[i] = prev;
-      mean += prev / n;
+      out[i] = prev;
+      mean += prev / init;
     }
-    for (let i = 0; i < n; i++) ring[i] -= mean;
-    let idx = 0, peak = 0;
-    for (let i = 0; i < len; i++) {
-      const a = ring[idx], b = ring[(idx + 1) % n];
-      out[i] = a;
-      ring[idx] = 0.996 * 0.5 * (a + b);
-      idx = (idx + 1) % n;
-      peak = Math.max(peak, Math.abs(a));
+    let peak = 0;
+    for (let i = 0; i < init; i++) {
+      out[i] -= mean;
+      peak = Math.max(peak, Math.abs(out[i]));
+    }
+    let apIn = 0, apOut = 0;
+    for (let i = init; i < len; i++) {
+      const x = 0.996 * 0.5 * (out[i - n] + out[i - n - 1]);
+      apOut = c * x + apIn - c * apOut;
+      apIn = x;
+      out[i] = apOut;
+      peak = Math.max(peak, Math.abs(apOut));
     }
     const fade = Math.floor(sr * 0.2);
     for (let i = 0; i < len; i++) {
