@@ -19,7 +19,7 @@
 
   <header id="hud">
     <div class="song">
-      <div><span id="song-title">—</span> <span id="capo" hidden title="Put a capo on this fret. The dots and fret numbers count from the capo."></span></div>
+      <div><span id="song-title">—</span> <span id="capo" hidden title="Put a capo on this fret. The dots and fret numbers count from the capo."></span> <span id="speed-badge" hidden title="Practice speed: the song waits for you to play each chord right"></span></div>
       <div id="song-sub" class="muted"></div>
     </div>
     <div class="chords">
@@ -62,7 +62,7 @@
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
       <label class="check"><input id="loop" type="checkbox"> Loop song</label>
       <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
-      <div class="row">
+      <div class="row views">
         <button id="view-player">Player view</button>
         <button id="view-top">Top view</button>
       </div>
@@ -103,6 +103,7 @@
   </div>
 
   <div id="feedback"></div>
+  <div id="toast" role="status" hidden></div>
 
   <button id="pause-fab" class="icon" title="Pause (Space)">❚❚</button>
   <button id="zoom-fab" class="icon" title="Magnify the neck (M)">🔍</button>
@@ -138,6 +139,7 @@
     </div>
     <div class="row">
       <button id="lesson-hear" title="Play the chord once (the microphone ignores it)">🔊 Hear it</button>
+      <button id="lesson-retry" class="primary">🎤 Try again</button>
       <button id="lesson-skip">Skip</button>
       <button id="lesson-next" class="primary" hidden>Next lesson →</button>
       <button id="lesson-exit">Exit</button>
@@ -155,7 +157,7 @@
         <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where. The next shape fades in with a shrinking ring.</li>
         <li><b>Right hand:</b> arrows and dots slide towards the white line over the soundhole. Strum or pick when they reach it.</li>
       </ul>
-      <p class="muted small">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera</p>
+      <p class="muted small keys">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera</p>
       <div class="row start-row">
         <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
         <button id="start" class="big">♫ Play songs</button>

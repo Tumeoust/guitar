@@ -43,6 +43,13 @@ When a song ends, the results screen offers *Play again*, the next lesson after 
 list. *Exit* in a lesson goes back to the lesson list. **⌂ Menu** in the settings, or Esc while paused, returns
 to the start screen.
 
+Settings (practice speed, play-along sound, metronome, loop, look-ahead, mic delay) are remembered between
+visits. The "In time" drills switch the metronome on and play at 100 %, and your own settings come back when
+you leave the drill. Below 100 %, the HUD shows the speed next to the song title.
+
+If the microphone can't be opened, the app says why in plain words (blocked, not found, in use by another app)
+instead of failing silently. A lesson then still shows its chord and offers *Try again*.
+
 ## Magnifier
 
 **🔍 Magnify the neck** (in the settings, the 🔍 button, or the M key) adds a close-up of the fretting hand's
@@ -82,7 +89,8 @@ How the check works (`MicJudge.analyzeChord` in `js/mic.js`):
 
 The game is silent by default. The play-along guitar sound can be switched on in the settings.
 Pressing Play hides the settings and counts down 3, 2, 1 on screen before the song starts. The ❚❚ button
-in the corner (or Space) pauses and brings the settings back.
+in the corner (or Space) pauses and brings the settings back. Playing on resumes from the start of the bar
+you paused in. Switching to another tab or app pauses the song.
 
 **Practice speeds.** Every song can be played at 25 %, 50 %, 75 % or 100 % speed. Below 100 %, the song stops at
 the start of each bar and waits until the microphone hears the chord played right; the same feedback as in the
