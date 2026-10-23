@@ -55,7 +55,7 @@ let currentView = viewChoice;
 function setView(name) {
   currentView = name;
   for (const v of ['highway', 'player', 'top']) $(`view-${v}`)?.classList.toggle('on', name === v);
-  // The highway cameras follow the song on their own; dragging moves only the other views.
+  // The highway camera frames the neck on its own; dragging moves only the other views.
   controls.enabled = name !== 'highway';
   document.body.classList.toggle('highway', name === 'highway');
   const v = VIEWS[name];
@@ -64,6 +64,12 @@ function setView(name) {
   const back = Math.max(1, 1.6 / camera.aspect);
   controls.target.set(...v.target);
   camera.position.set(...v.pos).sub(controls.target).multiplyScalar(back).add(controls.target);
+  // The lesson close-up moves up the neck with the capo.
+  if (name === 'lesson') {
+    const shift = fretX(cues.capo);
+    controls.target.x += shift;
+    camera.position.x += shift;
+  }
   controls.update();
 }
 function chooseView(name) {
@@ -111,7 +117,7 @@ const state = {
 };
 // Settings the player picks are remembered between visits. Drills from the lessons override some of
 // them while they play (see startDrill); applySettings() puts the player's own choice back.
-const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true };
+const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('fretview.settings'))); } catch { /* storage unavailable */ }
 function saveSetting(name, value) {
   settings[name] = value;
@@ -233,14 +239,26 @@ function restart() {
   if (!state.playing) play();
 }
 
+// The capo for comfort that the player picks (settings.capo) lets lessons, drills and songs without
+// their own capo be played further down the neck. Songs that need a capo to be in key keep theirs.
+const songCapo = (song) => song.capo ?? settings.capo;
+
+// Shapes keep their fingering; the neck draws them above the capo, and the pitches the microphone
+// listens for and the play-along plays move up with it.
+function applyCapo(capo) {
+  setCapo(capo);
+  cues.setCapo(capo);
+  guitar.setCapo(capo);
+  $('capo').hidden = !capo;
+  $('capo').textContent = capo ? `Capo ${capo}` : '';
+  $('countdown-capo').textContent = capo ? `Capo on fret ${capo}` : '';
+}
+
 function loadSong(song) {
   pause();
   state.song = song;
   state.anchorBeat = -countInBeats();
-  setCapo(song.capo);
-  $('capo').hidden = !song.capo;
-  $('capo').textContent = song.capo ? `Capo ${song.capo}` : '';
-  $('countdown-capo').textContent = song.capo ? `Capo on fret ${song.capo}` : '';
+  applyCapo(songCapo(song));
   $('song-title').textContent = song.title;
   $('song-sub').textContent = song.subtitle;
   resetStats();
@@ -465,8 +483,7 @@ async function startLesson(i) {
   $('lesson').classList.toggle('no-mic', !!err);
   $('song-title').textContent = LESSONS[i].title;
   $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length}`;
-  setCapo(0);
-  $('capo').hidden = true;
+  applyCapo(settings.capo);
   setView(lessonView());
   if (err) {
     lesson = null;
@@ -838,12 +855,13 @@ function setMagnify(on) {
 function renderZoom(dt) {
   const r = $('zoom-view').getBoundingClientRect();
   if (r.width < 20 || r.height < 20) return;
-  // Frame the frets the shape uses; in first position also the nut, where the open / muted
-  // markers and the string names are.
+  // Frame the frets the shape uses; in first position also the nut (or the capo), where the open and
+  // muted markers are.
+  const c = cues.capo;
   const held = cues.shownShape?.frets.filter((f) => f > 0) ?? [];
   const lo = held.length ? Math.min(...held) : 1, hi = held.length ? Math.max(...held) : 4;
-  const x0 = lo <= 3 ? -3.8 : fretX(lo - 1) - 1.5;
-  const x1 = fretX(Math.max(hi, lo <= 3 ? 4 : lo + 2)) + 1.2;
+  const x0 = lo <= 3 ? cues.nutX - 2.7 : fretX(c + lo - 1) - 1.5;
+  const x1 = fretX(c + Math.max(hi, lo <= 3 ? 4 : lo + 2)) + 1.2;
   const k = zoomFocus.set ? 1 - Math.exp(-dt * 5) : 1;
   zoomFocus.x += ((x0 + x1) / 2 - zoomFocus.x) * k;
   zoomFocus.w += (x1 - x0 - zoomFocus.w) * k;
@@ -874,14 +892,13 @@ function renderZoom(dt) {
 // notes keep their size all the way down instead of zooming towards you.
 const neckCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 600);
 const NECK_TILT = 1.05; // radians below the horizon
-const NECK_TOP_X = -2.4; // just above the open / muted markers at the nut
 const NECK_UP = new THREE.Vector3(-Math.sin(NECK_TILT), Math.cos(NECK_TILT), 0);
 const NECK_FORWARD = new THREE.Vector3(-Math.cos(NECK_TILT), -Math.sin(NECK_TILT), 0);
 const neckCenter = new THREE.Vector3();
 
 function renderHighway() {
   const w = window.innerWidth, h = window.innerHeight;
-  // From the nut at the top to just past the white line at the bottom. The nut stays below the HUD
+  // From the nut (or the capo) at the top to just past the white line at the bottom. The nut stays below the HUD
   // when narrow screens put it at the top, and in a chord lesson the white line stays above the lesson
   // box when the box reaches across the middle.
   const hud = $('hud').getBoundingClientRect();
@@ -889,7 +906,8 @@ function renderHighway() {
   const box = $('lesson').getBoundingClientRect();
   const boxTop = (lesson || noMicView) && box.left < w / 2 + 160 ? box.top : h;
   const heightOf = (x) => NECK_UP.x * x + NECK_UP.y * STRING_Y; // up the picture, in world units
-  const top = heightOf(NECK_TOP_X), bottom = heightOf(cues.lane.to + 1.2);
+  // The top is just above the open / muted markers at the nut, or at the capo.
+  const top = heightOf(cues.nutX - 1.3), bottom = heightOf(cues.lane.to + 1.2);
   const topY = Math.min(0.9, 1 - (2 * (hudBottom + 8)) / h), bottomY = Math.max(-0.9, 1 - (2 * (boxTop - 16)) / h);
   // Half the picture's height; wide enough across for the neck and its labels on narrow screens.
   const half = Math.max((top - bottom) / (topY - bottomY), 7.5 / (w / h));
@@ -1276,6 +1294,7 @@ $('loop').addEventListener('change', (e) => {
 });
 
 function applySettings() {
+  document.querySelectorAll('.capo-select').forEach((el) => { el.value = settings.capo; });
   setSpeed(settings.speed);
   setGuide(settings.guide);
   setLook(settings.look);
@@ -1285,6 +1304,15 @@ function applySettings() {
   $('latency').value = settings.latency;
   $('lat-val').textContent = `${settings.latency} ms`;
 }
+document.querySelectorAll('.capo-select').forEach((el) => {
+  for (let c = 0; c <= 7; c++) el.add(new Option(c ? `Fret ${c}` : 'No capo', c));
+  el.addEventListener('change', () => {
+    saveSetting('capo', Number(el.value));
+    document.querySelectorAll('.capo-select').forEach((other) => { other.value = settings.capo; });
+    applyCapo(lesson || noMicView ? settings.capo : songCapo(state.song));
+    if (currentView === 'lesson') setView('lesson');
+  });
+});
 $('view-highway').addEventListener('click', () => chooseView('highway'));
 $('view-player').addEventListener('click', () => chooseView('player'));
 $('view-top').addEventListener('click', () => chooseView('top'));
