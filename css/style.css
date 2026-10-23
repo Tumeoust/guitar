@@ -306,3 +306,55 @@ body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: non
   #zoom { top: 66px; width: min(55vw, 480px); }
   #zoom-view { max-height: 46vh; }
 }
+
+/* Tuner */
+#screen-tuner { width: min(520px, 100%); }
+#start-tuner { margin-top: 14px; }
+#tuner-open { margin: 0 0 0 6px; padding: 0; font-size: 12px; text-decoration: underline; }
+.tuner-strings { display: flex; gap: 6px; }
+.tuner-strings button {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 0;
+  position: relative; transition: background .15s, border-color .15s;
+}
+.tuner-strings button b { font-size: 18px; }
+.tuner-strings button span { font-size: 10px; color: var(--muted); }
+.tuner-strings button.now { border-color: var(--accent); background: rgba(76, 201, 240, 0.18); }
+.tuner-strings button.locked { box-shadow: inset 0 0 0 2px var(--accent); }
+.tuner-strings button.tuned::after {
+  content: '✓'; position: absolute; top: 2px; right: 5px; font-size: 11px; font-weight: 800; color: #3ddc84;
+}
+.gauge { position: relative; width: min(340px, 100%); align-self: center; --gc: #ffb627; }
+.gauge svg { display: block; width: 100%; height: auto; overflow: visible; }
+.gauge-arc { fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 10; stroke-linecap: round; }
+.gauge-zone { fill: none; stroke: #3ddc84; stroke-width: 10; opacity: .45; transition: opacity .2s; }
+#tuner-ticks line { stroke: rgba(255, 255, 255, 0.35); stroke-width: 1.5; }
+#tuner-ticks line.major { stroke: rgba(255, 255, 255, 0.7); stroke-width: 2.5; }
+#tuner-ticks text, .gauge-end { fill: var(--muted); font-size: 11px; text-anchor: middle; font-family: inherit; }
+.gauge-end { font-size: 18px; }
+#tuner-needle line { stroke: var(--gc); stroke-width: 4; stroke-linecap: round; transition: stroke .15s; }
+#tuner-needle circle { fill: var(--gc); transition: fill .15s; }
+.gauge.idle { --gc: #59627a; }
+.gauge.near { --gc: #d6e05a; }
+.gauge.in, .gauge.done { --gc: #3ddc84; }
+.gauge.in .gauge-zone, .gauge.done .gauge-zone { opacity: 1; filter: drop-shadow(0 0 6px #3ddc84); }
+#tuner-check {
+  position: absolute; left: 50%; top: 58%; width: 64px; height: 64px; margin: -32px 0 0 -32px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: #3ddc84; color: #06121a; font-size: 38px; font-weight: 900;
+  opacity: 0; transform: scale(.4); pointer-events: none;
+  transition: opacity .25s, transform .25s;
+}
+.gauge.done #tuner-check { opacity: 1; transform: scale(1); }
+#tuner-check.pop { animation: tuner-pop .5s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes tuner-pop {
+  0% { transform: scale(.3); box-shadow: 0 0 0 0 rgba(61, 220, 132, .7); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); box-shadow: 0 0 0 28px rgba(61, 220, 132, 0); }
+}
+.tuner-readout { text-align: center; display: flex; flex-direction: column; gap: 2px; }
+#tuner-note { font-size: 44px; font-weight: 800; line-height: 1; }
+#tuner-cents { font-size: 12px; min-height: 1.3em; }
+#tuner-hint { font-size: 16px; font-weight: 700; min-height: 1.3em; }
+#tuner-hint.ok { color: #3ddc84; }
+#tuner-hint.bad { color: #ffb627; }
+#tuner-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }

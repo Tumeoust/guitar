@@ -72,7 +72,7 @@
       <button id="mic-toggle">🎤 Enable microphone</button>
       <div id="mic-section" hidden>
         <div class="meter"><div id="mic-level"></div></div>
-        <div class="small muted">Tuner: <span id="tuner">—</span></div>
+        <div class="small muted">Tuner: <span id="tuner">—</span> <button id="tuner-open" class="link small">Open tuner</button></div>
         <label class="field">Mic sensitivity <span class="sens-val">5</span>
           <input id="sensitivity" class="sensitivity" type="range" min="1" max="10" step="1" value="5">
         </label>
@@ -160,6 +160,7 @@
         <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
         <button id="start" class="big">♫ Play songs</button>
       </div>
+      <button id="start-tuner" class="link">🎵 Tune your guitar first</button>
     </div>
 
     <div class="card wide" id="screen-songs" hidden>
@@ -190,6 +191,36 @@
         The browser asks for permission the first time.</p>
       <button id="lesson-continue" class="primary big"></button>
       <div id="lesson-list" class="pick-list" role="list" aria-label="Lessons"></div>
+    </div>
+
+    <div class="card wide" id="screen-tuner" hidden>
+      <div class="card-head">
+        <button class="back" title="Back (Esc)">← Back</button>
+        <h2>Tuner</h2>
+      </div>
+      <p class="muted small">Standard tuning. Play one string at a time and let it ring; the tuner works out which string it is.
+        Tap a string to tune only that one.</p>
+      <div id="tuner-strings" class="tuner-strings" role="group" aria-label="Strings"></div>
+      <div id="tuner-gauge" class="gauge idle">
+        <svg viewBox="0 0 300 175" aria-hidden="true">
+          <path class="gauge-arc" d=""></path>
+          <path class="gauge-zone" d=""></path>
+          <g id="tuner-ticks"></g>
+          <text x="22" y="170" class="gauge-end">♭</text>
+          <text x="278" y="170" class="gauge-end">♯</text>
+          <g id="tuner-needle">
+            <line x1="150" y1="160" x2="150" y2="40"></line>
+            <circle cx="150" cy="160" r="7"></circle>
+          </g>
+        </svg>
+        <div id="tuner-check" aria-hidden="true">✓</div>
+      </div>
+      <div class="tuner-readout" aria-live="polite">
+        <div id="tuner-note">—</div>
+        <div id="tuner-cents" class="muted"></div>
+        <div id="tuner-hint">Play a string</div>
+      </div>
+      <div class="meter" title="Microphone level"><div id="tuner-level"></div></div>
     </div>
 
     <div class="card" id="screen-results" hidden>

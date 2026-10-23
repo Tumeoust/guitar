@@ -31,6 +31,14 @@ The start screen offers **Chord lessons** and **Play songs**. Neither starts any
 - **Chord lessons** opens the list of lessons. Finished lessons get a ✓ and are remembered, and the big button
   continues with the first one you haven't done yet. Any lesson can also be started straight from the list.
 
+**🎵 Tune your guitar first** (under the two buttons, or *Open tuner* next to the small tuner readout in the
+settings) opens the tuner. Play one string at a time: it works out which string you're playing, and a needle
+shows how many cents sharp or flat it is, moving as the pitch changes, with a hint to tighten or loosen.
+Once a string has stayed within ±5 cents for a moment, a ✓ pops up with a chime and the string gets a ✓ in the
+row above the dial; when all six are in tune you hear a longer chime. Tap a string in that row to tune only
+that string (useful when it's so far off that it sounds like a neighbouring string); tap it again to go back
+to automatic. The tuner always uses standard tuning (E A D G B e) and ignores a song's capo.
+
 When a song ends, the results screen offers *Play again*, the next lesson after a drill, or a way back to the
 list. *Exit* in a lesson goes back to the lesson list. **⌂ Menu** in the settings, or Esc while paused, returns
 to the start screen.
@@ -150,11 +158,12 @@ or from arpeggio patterns. The `CHORDS` table defines frets and fingers per stri
 | `js/songs.js`    | Chord shapes and song data                                            |
 | `js/audio.js`    | Karplus–Strong string synth and metronome                             |
 | `js/mic.js`      | Microphone onset, pitch and chord detection, and grading              |
+| `js/tuner.js`    | Tuner: pitch tracking, string detection, in-tune check and chime      |
 | `js/lessons.js`  | Chord lessons and the lesson runner (listens, judges, explains)       |
 
 ## Testing microphone mode without a guitar
 
-Open `index.html?selftest`. Microphone mode and lessons then listen to the synth instead of the real microphone.
+Open `index.html?selftest`. Microphone mode, lessons and the tuner then listen to the synth instead of the real microphone.
 For songs, switch the play-along sound on; playing along "perfectly" should score mostly Perfect.
 For lessons, `fretview.audio.playEvent(...)` in the console strums any chord into the detector.
 

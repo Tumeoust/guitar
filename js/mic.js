@@ -275,7 +275,7 @@ function sensitivityToRms(value) {
 }
 
 // YIN pitch detector; returns Hz or 0.
-function yin(buf, sr) {
+export function yin(buf, sr) {
   const minLag = Math.floor(sr / 1100);
   const maxLag = Math.min(Math.floor(sr / 70), Math.floor(buf.length / 2));
   const w = buf.length - maxLag;

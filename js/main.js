@@ -7,6 +7,7 @@ import { GuitarAudio } from './audio.js';
 import { MicJudge, LESSON } from './mic.js';
 import { midiName, setCapo } from './music.js';
 import { LESSONS, LessonRunner, CANDIDATES, chordFeedback, stringName } from './lessons.js';
+import { Tuner, TUNER_STRINGS, chime } from './tuner.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -92,6 +93,7 @@ const state = {
 let audio = null;
 let mic = null;
 let lesson = null; // a LessonRunner while in lesson mode
+let tuner = null;
 let autoNext = null; // timer that starts the next lesson
 let sensitivity = 5;
 try { sensitivity = Number(localStorage.getItem('fretview.sensitivity')) || 5; } catch { /* storage unavailable */ }
@@ -630,17 +632,20 @@ const inMenu = () => !$('overlay').hidden;
 function showScreen(name) {
   pause();
   if (document.body.classList.contains('lesson-mode')) exitLesson();
+  if (name !== 'tuner') tuner?.stop();
   screen = name;
-  for (const n of ['home', 'songs', 'lessons', 'results']) $(`screen-${n}`).hidden = n !== name;
+  for (const n of ['home', 'songs', 'lessons', 'tuner', 'results']) $(`screen-${n}`).hidden = n !== name;
   $('overlay').hidden = false;
   document.body.classList.add('menu');
   if (name === 'songs') renderSongList();
   if (name === 'lessons') renderLessonList();
+  if (name === 'tuner') openTuner();
   const focus = { songs: 'song-go', lessons: 'lesson-continue', results: $('results-next').hidden ? 'results-again' : 'results-next' }[name];
   if (focus) $(focus).focus({ preventScroll: true });
 }
 
 function hideMenu() {
+  tuner?.stop();
   $('overlay').hidden = true;
   document.body.classList.remove('menu');
 }
@@ -820,6 +825,127 @@ function renderFingers(shape) {
   $('zoom-fingers').replaceChildren(...items);
 }
 
+// ---- Tuner -----------------------------------------------------------------
+// Needle angle at ±50 cents; the scale ends there.
+const GAUGE = { cx: 150, cy: 160, r: 130, deg: 60 };
+const gaugePoint = (cents, r) => {
+  const a = ((Math.max(-50, Math.min(50, cents)) / 50) * GAUGE.deg * Math.PI) / 180;
+  return [GAUGE.cx + r * Math.sin(a), GAUGE.cy - r * Math.cos(a)];
+};
+const gaugeArc = (from, to, r) => {
+  const [x0, y0] = gaugePoint(from, r), [x1, y1] = gaugePoint(to, r);
+  return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+};
+
+function buildTuner() {
+  const svg = $('tuner-gauge').querySelector('svg');
+  svg.querySelector('.gauge-arc').setAttribute('d', gaugeArc(-50, 50, GAUGE.r));
+  svg.querySelector('.gauge-zone').setAttribute('d', gaugeArc(-5, 5, GAUGE.r));
+  const ns = 'http://www.w3.org/2000/svg';
+  for (let c = -50; c <= 50; c += 5) {
+    const major = c % 25 === 0;
+    const [x0, y0] = gaugePoint(c, GAUGE.r - (major ? 16 : c % 10 === 0 ? 10 : 6));
+    const [x1, y1] = gaugePoint(c, GAUGE.r - 2);
+    const line = document.createElementNS(ns, 'line');
+    Object.entries({ x1: x0, y1: y0, x2: x1, y2: y1 }).forEach(([k, v]) => line.setAttribute(k, v.toFixed(1)));
+    if (major) line.classList.add('major');
+    $('tuner-ticks').append(line);
+    if (major) {
+      const [tx, ty] = gaugePoint(c, GAUGE.r + 18);
+      const text = document.createElementNS(ns, 'text');
+      text.setAttribute('x', tx.toFixed(1));
+      text.setAttribute('y', (ty + 4).toFixed(1));
+      text.textContent = c > 0 ? `+${c}` : c;
+      $('tuner-ticks').append(text);
+    }
+  }
+  $('tuner-strings').replaceChildren(...TUNER_STRINGS.map((st, s) => {
+    const b = document.createElement('button');
+    b.dataset.string = s;
+    b.title = `${stringName(s)} string (${st.name}). Tap to tune only this string, tap again for automatic.`;
+    b.innerHTML = `<b>${st.label}</b><span>${st.name}</span>`;
+    b.addEventListener('click', () => {
+      tuner?.setLock(tuner.lock === s ? null : s);
+      renderTunerStrings();
+    });
+    return b;
+  }));
+}
+
+async function openTuner() {
+  $('tuner-hint').textContent = 'Play a string';
+  $('tuner-hint').className = '';
+  const err = await enableMic();
+  if (screen !== 'tuner') return; // left again while the browser asked for the microphone
+  if (err) {
+    $('tuner-hint').textContent = `${err}. The tuner needs the microphone to hear your guitar.`;
+    $('tuner-hint').className = 'bad';
+    return;
+  }
+  tuner = tuner || new Tuner(audio.ctx, {
+    onTuned(s, all) {
+      chime(audio.ctx, all);
+      const check = $('tuner-check');
+      check.classList.remove('pop');
+      void check.offsetWidth; // restart the animation
+      check.classList.add('pop');
+      renderTunerStrings();
+    },
+  });
+  if (!tuner.active) tuner.start(mic.src);
+  renderTunerStrings();
+}
+
+function renderTunerStrings() {
+  const now = tuner?.reading?.string ?? tuner?.lock;
+  $('tuner-strings').querySelectorAll('button').forEach((b) => {
+    const s = Number(b.dataset.string);
+    b.classList.toggle('now', s === now);
+    b.classList.toggle('locked', s === tuner?.lock);
+    b.classList.toggle('tuned', !!tuner?.tuned.has(s));
+  });
+}
+
+let tunerShown = null;
+function updateTuner(t) {
+  tuner.update(t);
+  const r = tuner.reading;
+  $('tuner-level').style.width = `${Math.min(100, tuner.level * 400)}%`;
+  const [x, y] = gaugePoint(tuner.shown, GAUGE.r - 6);
+  const needle = $('tuner-needle').querySelector('line');
+  needle.setAttribute('x2', x.toFixed(1));
+  needle.setAttribute('y2', y.toFixed(1));
+  const gauge = $('tuner-gauge');
+  gauge.classList.toggle('idle', !r);
+  gauge.classList.toggle('near', !!r && Math.abs(r.cents) <= 15);
+  gauge.classList.toggle('in', !!r && r.inTune);
+  gauge.classList.toggle('done', !!r?.done);
+
+  const key = r ? `${r.string}|${Math.round(r.cents)}|${r.note}|${r.done}` : tuner.lock ?? '';
+  if (key === tunerShown) return;
+  tunerShown = key;
+  renderTunerStrings();
+  if (!r) {
+    const st = TUNER_STRINGS[tuner.lock];
+    $('tuner-note').textContent = st ? st.label : '—';
+    $('tuner-cents').textContent = st ? `${stringName(tuner.lock)} string · ${st.name}` : '';
+    const all = tuner.tuned.size === TUNER_STRINGS.length;
+    $('tuner-hint').textContent = all ? '🎉 All six strings are in tune' : st ? `Play the ${stringName(tuner.lock)} string` : 'Play a string';
+    $('tuner-hint').className = all ? 'ok' : '';
+    return;
+  }
+  const st = TUNER_STRINGS[r.string];
+  const c = Math.round(r.cents);
+  $('tuner-note').textContent = st.label;
+  $('tuner-cents').textContent = `${stringName(r.string)} string · heard ${r.note}, ${r.hz.toFixed(1)} Hz · ${c > 0 ? '+' : ''}${c} cents`;
+  let hint, cls;
+  if (r.done || r.inTune) [hint, cls] = [r.done ? '✓ In tune' : 'Hold it…', 'ok'];
+  else if (r.cents < 0) [hint, cls] = [`Too low — tighten the string ↑${Math.abs(c) > 50 ? ' (a lot)' : ''}`, 'bad'];
+  else [hint, cls] = [`Too high — loosen the string ↓${c > 50 ? ' (a lot)' : ''}`, 'bad'];
+  $('tuner-hint').textContent = hint;
+  $('tuner-hint').className = cls;
+}
+
 // ---- Main loop -------------------------------------------------------------
 let lastFrame = performance.now();
 function frame() {
@@ -837,6 +963,8 @@ function frame() {
   const t = clockNow();
   let beat = beatAt(t);
   const song = state.song;
+
+  if (tuner?.active && screen === 'tuner' && inMenu()) updateTuner(t);
 
   if (lesson) {
     mic.update(t);
@@ -956,6 +1084,9 @@ select.addEventListener('change', () => {
 
 $('start').addEventListener('click', () => showScreen('songs'));
 $('start-lessons').addEventListener('click', () => showScreen('lessons'));
+$('start-tuner').addEventListener('click', () => showScreen('tuner'));
+$('tuner-open').addEventListener('click', () => showScreen('tuner'));
+buildTuner();
 $('menu-open').addEventListener('click', () => showScreen('home'));
 document.querySelectorAll('#overlay .back').forEach((el) => el.addEventListener('click', menuBack));
 $('song-go').addEventListener('click', startSong);
@@ -1063,4 +1194,4 @@ select.value = SONGS.indexOf(savedSong ?? SONGS[0]);
 loadSong(savedSong ?? SONGS[0]);
 showScreen('home');
 requestAnimationFrame(frame);
-if (selfTest) window.fretview = { state, camera, controls, CHORDS, get mic() { return mic; }, get audio() { return audio; }, get lesson() { return lesson; } };
+if (selfTest) window.fretview = { state, camera, controls, CHORDS, get mic() { return mic; }, get audio() { return audio; }, get lesson() { return lesson; }, get tuner() { return tuner; } };
