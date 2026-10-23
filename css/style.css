@@ -19,6 +19,11 @@ html, body {
 }
 
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+/* Highway view: line between the neck camera (top) and the strumming lane (bottom). */
+#split { position: fixed; left: 0; right: 0; height: 2px; background: rgba(255, 255, 255, 0.22); pointer-events: none; }
+#split[hidden] { display: none; }
+/* The strumming lane runs up the middle of the highway view: keep the practice box beside it. */
+body.highway #practice { left: auto; right: 16px; transform: none; width: min(360px, calc(100% - 32px)); }
 
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
@@ -162,7 +167,7 @@ body:has(#panel.open) #zoom-fab, body.magnify #zoom-fab { display: none; }
 }
 .sym { width: 18px; text-align: center; font-weight: 800; }
 .sym.ring { color: #ddd; }
-.sym.x { color: #ff5d73; }
+.sym.x { color: #e8ebf2; }
 .sym.gem { color: #ffffff; }
 .legend-note { grid-column: 1 / -1; color: var(--muted); max-width: 260px; }
 

@@ -2,23 +2,27 @@
 
 A Guitar Hero–style practice game for a **real guitar** that runs in the browser.
 
-You see a 3D acoustic guitar from the player's side, the way you see your own guitar when you look down at it:
-headstock on the left, thickest string nearest to you. There is no sheet music and there are no note names.
-The game only shows what each hand has to do:
+The default **Highway** view splits the screen like Guitar Hero: two cameras look along the strings towards the
+bridge. The top one rides along the neck behind your fretting hand and follows it up and down the neck; the bottom
+one looks down the strumming lane, where the right-hand cues come towards you. Both show the low E on the right and
+the high e on the left: your own view of the guitar, turned so the bridge is at the top. *Player* view (under
+*Camera* in the settings) shows the whole guitar the way you see your own when you look down at it: headstock on the
+left, thickest string nearest to you. The choice is remembered. There is no sheet music and there are no note
+names. The game only shows what each hand has to do:
 
-- **Left hand.** Coloured dots on the fretboard show which finger goes where:
-  1 = index (blue), 2 = middle (green), 3 = ring (yellow), 4 = pinky (pink).
-  ○ at the nut means play the string open, and a red ✕ over the string's letter means don't play it.
+- **Left hand.** Coloured dots on the fretboard show which finger goes where, in the fret-button colours of
+  Guitar Hero 3: 1 = index (green), 2 = middle (red), 3 = ring (yellow), 4 = pinky (blue).
+  ○ at the nut means play the string open, and a grey ✕ over the string's letter means don't play it.
   Each string's letter (E A D G B e) also sits right next to the nut, in the colour of the finger that frets it.
   Fret numbers 1–5 are written along the low E side. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
-  Colour always means a finger: each string to be played glows in the colour of the finger fretting it,
-  from the finger to the bridge. Open strings glow white.
+  Colour always means a finger: a string's letter at the nut and a picking cue on it have the colour of the
+  finger fretting it, or white when the string is open.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
   As soon as the last strum of a chord has gone past the line, the neck already shows the next chord, so your
   fingers can move before its first strum arrives. Below 100 % speed, a chord the game is still waiting for
   stays on the neck until it has been played right.
 - **Right hand.** Cues slide along the strings from the bridge towards the white line over the soundhole.
-  Strum or pick when they reach it.
+  Strum or pick when they reach it. In the Highway view they come down the lane towards you.
   - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
   - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
 
@@ -59,7 +63,7 @@ strings ring open, and which not to play. The setting is remembered.
 
 ## Chord lessons
 
-The lessons teach one chord at a time with no time pressure (Em, Am, E, A, D, C, G and Dm), then build up the
+The lessons teach one chord at a time with no time pressure (Em, Am, E, A, D, C, G, Dm and Bm), then build up the
 changes between them in three steps, grouped by the song they lead to:
 
 1. **Changing X ↔ Y**: change at your own pace. The lesson waits until it hears each chord right.
@@ -131,7 +135,8 @@ Microphone access needs a secure context: `localhost` or HTTPS.
 | Esc                | Pause; when paused, back to the menu. In a lesson, exit it |
 | R                  | Restart (with a one-bar count-in)      |
 | ← / →              | Jump back / forward one bar            |
-| Drag / scroll      | Move / zoom the camera                 |
+| Drag / scroll      | Move / zoom the camera (Player and Top view) |
+| Camera             | Highway (neck on top, strumming lane below), Player or Top |
 | Practice speed     | 25 / 50 / 75 / 100 %; below 100 % the song waits for you |
 | Look-ahead slider  | How early cues appear                  |
 | Play-along sound   | Synthesised guitar playing the part (off by default) |
@@ -149,6 +154,8 @@ The settings panel folds away while a song plays, and comes back when you pause.
 - House of the Rising Sun (traditional): fingerpicked arpeggios in 6/8.
 - Cinnamon Girl (Lana Del Rey): the C – Em – D – Am loop with a capo on the 2nd fret. Only the chords and a strum
   pattern, no melody or lyrics.
+- One (Metallica): the clean intro simplified to Bm – G – D, with an easy four-string Bm (no barre). Only the
+  chords and a strum pattern, no melody or lyrics.
 
 A song can set `capo`. The dots and fret numbers then count from the capo, the way chord sheets write it,
 and the play-along sound and the microphone check use the pitches the capo gives. The HUD shows a *Capo* badge.
