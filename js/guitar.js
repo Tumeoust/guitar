@@ -232,6 +232,9 @@ export function buildGuitar() {
       map: labelTexture(STRING_LABELS[i], '#f2f4f8'), transparent: true, depthTest: false, depthWrite: false,
     }));
     label.renderOrder = 18;
+    // Layer 1: only the whole-guitar views show these. The highway's neck camera looks along the
+    // neck, where they would sit behind the string names at the nut.
+    label.layers.set(1);
     label.scale.setScalar(1.7);
     label.position.copy(p).add(new THREE.Vector3(0, 1.1, 0));
     root.add(label);

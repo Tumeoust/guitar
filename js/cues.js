@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import {
-  SCALE, fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, TOP_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
+  fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
 } from './guitar.js';
 import { discTexture, ringTexture, wideLabelTexture, labelTexture, mutedLabelTexture } from './textures.js';
 import { CHORD_NAMES } from './songs.js';
 
-export const FINGER_COLORS = { 1: '#4cc9f0', 2: '#80ed99', 3: '#ffd166', 4: '#f472b6' };
-// Colour always means "which finger": a string, a picking cue and a fretboard dot share the
+// The fret-button colours of Guitar Hero 3, in the same order: index = green, middle = red,
+// ring = yellow, pinky = blue.
+export const FINGER_COLORS = { 1: '#22d34b', 2: '#ff3640', 3: '#ffd31a', 4: '#2a8cff' };
+// Colour always means "which finger": a picking cue, a string name and a fretboard dot share the
 // colour of the finger that frets it. Open strings are white.
 export const OPEN_COLOR = '#ffffff';
 const STRUM_COLORS = { D: '#ffffff', U: '#aab4c8' };
@@ -16,6 +18,9 @@ export function stringColor(frets, fingers, s) {
   return frets[s] > 0 ? FINGER_COLORS[fingers[s] || 1] : OPEN_COLOR;
 }
 const LANE_WIDTH = 7.4;
+// The right-hand lane, white line and beat lines lie just under the strings, in the same plane as the
+// cues, so the cues meet the line from any camera angle.
+const LANE_Y = STRING_Y - 0.14;
 // String names just past the nut, next to the strings themselves, so it is easy to tell which
 // string a dot is on.
 const STRING_LETTERS = ['E', 'A', 'D', 'G', 'B', 'e'];
@@ -154,27 +159,15 @@ export class Cues {
       new THREE.PlaneGeometry(HIGHWAY_END - STRIKE_X + 1.5, LANE_WIDTH).rotateX(-Math.PI / 2),
       new THREE.MeshBasicMaterial({ color: 0x05070c, transparent: true, opacity: 0.45, depthWrite: false }),
     );
-    lane.position.set((STRIKE_X + HIGHWAY_END) / 2 + 0.25, TOP_Y + 0.05, 0);
+    lane.position.set((STRIKE_X + HIGHWAY_END) / 2 + 0.25, LANE_Y, 0);
     r.add(lane);
 
     this.strikeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false });
     const strike = new THREE.Mesh(new THREE.PlaneGeometry(0.22, LANE_WIDTH).rotateX(-Math.PI / 2), this.strikeMat);
-    strike.position.set(STRIKE_X, TOP_Y + 0.07, 0);
+    strike.position.set(STRIKE_X, LANE_Y + 0.04, 0);
     r.add(strike);
     this.strikeFlash = 0;
     this.strikeColor = new THREE.Color(0xffffff);
-
-    // Glow along the part of each string that should ring: from the fretting finger to the saddle.
-    this.lit = [];
-    for (let i = 0; i < 6; i++) {
-      const m = new THREE.Mesh(
-        new THREE.CylinderGeometry(1, 1, 1, 10, 1, true),
-        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
-      );
-      m.renderOrder = 12;
-      r.add(m);
-      this.lit.push(m);
-    }
 
     this.targets = [];
     for (let i = 0; i < 6; i++) {
@@ -278,28 +271,6 @@ export class Cues {
     }
   }
 
-  drawLitStrings(shape, alpha) {
-    const up = new THREE.Vector3(0, 1, 0);
-    for (let i = 0; i < 6; i++) {
-      const m = this.lit[i];
-      const f = shape?.frets[i];
-      if (f == null || f < 0) { m.visible = false; continue; }
-      const x0 = f > 0 ? this.fingerPos(i, f, staggerOf(shape.frets, shape.fingers, i)).x : 0;
-      const a = new THREE.Vector3(x0, STRING_Y, stringZ(i, x0));
-      const b = new THREE.Vector3(SCALE, STRING_Y, stringZ(i, SCALE));
-      const d = b.clone().sub(a);
-      const flash = this.targets[i].flash;
-      const r = 0.14 + flash * 0.08;
-      m.visible = true;
-      m.position.copy(a).add(b).multiplyScalar(0.5);
-      m.quaternion.setFromUnitVectors(up, d.clone().normalize());
-      m.scale.set(r, d.length(), r);
-      m.material.color.set(stringColor(shape.frets, shape.fingers, i));
-      // Open strings stay quieter so the finger colours stand out.
-      m.material.opacity = alpha * Math.min(1, (f > 0 ? 0.85 : 0.4) + flash * 0.4);
-    }
-  }
-
   // Each string's name in the colour of the finger that frets it (white when open), crossed out
   // in red when it must not be played, dimmed when the shape doesn't use it.
   drawStringNames(shape) {
@@ -366,16 +337,15 @@ export class Cues {
       this.band.visible = false;
     }
 
-    // Chord name floating just above the finger markers (beyond the high e), so name and shape go together.
+    // Chord name floating just beyond the high e, next to the finger markers, so name and shape go together.
     const named = cur || next;
     if (named?.name) {
       const x = held.length ? (fretX(Math.min(...held) - 1) + fretX(Math.max(...held))) / 2 : 1.8;
-      const label = this.marker(wideLabelTexture(CHORD_NAMES[named.name] || named.name), x, 1.2, -(boardHalfWidth(x) + 1.7), 1, cur ? 1 : 0.5, 23);
+      const label = this.marker(wideLabelTexture(CHORD_NAMES[named.name] || named.name), x, 1.2, -(boardHalfWidth(x) + 3.6), 1, cur ? 1 : 0.5, 23);
       label.scale.set(6.4, 1.6, 1);
     }
 
     this.shownShape = cur ? cur.shape : next?.shape ?? null;
-    this.drawLitStrings(this.shownShape, cur ? 1 : 0.3);
     this.drawStringNames(this.shownShape);
 
     // ---- Right hand ------------------------------------------------------
@@ -425,7 +395,7 @@ export class Cues {
     for (let k = Math.ceil(beat / every) * every; k - beat <= lookBeats; k += every) {
       const line = this.beatLines.get();
       const bar = ((k % bpb) + bpb) % bpb === 0;
-      line.position.set(STRIKE_X + ((k - beat) / lookBeats) * span, TOP_Y + 0.06, 0);
+      line.position.set(STRIKE_X + ((k - beat) / lookBeats) * span, LANE_Y + 0.02, 0);
       line.scale.set(bar ? 0.16 : 0.07, 1, 1);
       line.material.opacity = bar ? 0.45 : 0.18;
     }

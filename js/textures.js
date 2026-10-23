@@ -23,7 +23,7 @@ function centeredText(g, text, x, y, size, color) {
   g.fillText(text, x, y + size * 0.06);
 }
 
-// Filled disc with a finger number on it.
+// Filled disc with a finger number on it, with a white rim like a Guitar Hero gem.
 export function discTexture(color, text) {
   return canvasTexture(`disc:${color}:${text}`, (g, s) => {
     g.beginPath();
@@ -33,7 +33,12 @@ export function discTexture(color, text) {
     g.lineWidth = 7;
     g.strokeStyle = 'rgba(10,12,18,0.85)';
     g.stroke();
-    centeredText(g, text, s / 2, s / 2, 78, '#0b0d12');
+    g.beginPath();
+    g.arc(s / 2, s / 2, s / 2 - 14, 0, Math.PI * 2);
+    g.lineWidth = 6;
+    g.strokeStyle = 'rgba(255,255,255,0.9)';
+    g.stroke();
+    centeredText(g, text, s / 2, s / 2, 70, '#0b0d12');
   });
 }
 
@@ -69,13 +74,13 @@ export function wideLabelTexture(text, color = '#ffffff') {
   }, 512, 128);
 }
 
-// String name crossed out in red: "don't play this string".
+// String name greyed out and crossed out: "don't play this string". Grey, because red is a finger.
 export function mutedLabelTexture(text) {
   return canvasTexture(`muted:${text}`, (g, s) => {
-    centeredText(g, text, s * 0.4, s / 2, 64, '#ff5d73');
+    centeredText(g, text, s * 0.4, s / 2, 64, '#6b7385');
     g.lineWidth = 8;
     g.lineCap = 'round';
-    g.strokeStyle = '#ff5d73';
+    g.strokeStyle = '#e8ebf2';
     g.beginPath();
     g.moveTo(s * 0.7, s * 0.32); g.lineTo(s * 0.88, s * 0.5);
     g.moveTo(s * 0.88, s * 0.32); g.lineTo(s * 0.7, s * 0.5);

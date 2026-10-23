@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildGuitar, fretX } from './guitar.js';
+import { buildGuitar, fretX, STRIKE_X, STRING_Y, HIGHWAY_END } from './guitar.js';
 import { Cues, FINGER_COLORS } from './cues.js';
 import { SONGS, CHORDS, CHORD_NAMES, strumEvent } from './songs.js';
 import { GuitarAudio } from './audio.js';
@@ -31,6 +31,7 @@ const cues = new Cues();
 scene.add(cues.root);
 
 const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 1000);
+camera.layers.enable(1); // the string names at the tuning pegs
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.maxDistance = 400;
@@ -38,23 +39,40 @@ controls.minDistance = 10;
 
 // "Player" looks down over the low-E side of the neck, like you do when holding a guitar.
 const VIEWS = {
+  highway: null, // two cameras, see renderHighway()
   player: { pos: [52, 60, 62], target: [28, -4, 0] },
   top: { pos: [30, 100, 3], target: [30, 0, 0] },
   // Lessons are about the fretting hand: closer in on the first frets.
   lesson: { pos: [30, 36, 38], target: [11, -3, 0] },
 };
-let currentView = 'player';
+// The view the player picked; lessons switch to their own close-up and back.
+let viewChoice = 'highway';
+try {
+  const saved = localStorage.getItem('fretview.view');
+  if (['highway', 'player', 'top'].includes(saved)) viewChoice = saved;
+} catch { /* storage unavailable */ }
+let currentView = viewChoice;
 function setView(name) {
   currentView = name;
-  $('view-player')?.classList.toggle('on', name === 'player');
-  $('view-top')?.classList.toggle('on', name === 'top');
+  for (const v of ['highway', 'player', 'top']) $(`view-${v}`)?.classList.toggle('on', name === v);
+  // The highway cameras follow the song on their own; dragging moves only the other views.
+  controls.enabled = name !== 'highway';
+  document.body.classList.toggle('highway', name === 'highway');
+  $('split').hidden = name !== 'highway';
   const v = VIEWS[name];
+  if (!v) return;
   // The views are framed for a 16:9-ish window; back off on narrower ones so the whole guitar fits.
   const back = Math.max(1, 1.6 / camera.aspect);
   controls.target.set(...v.target);
   camera.position.set(...v.pos).sub(controls.target).multiplyScalar(back).add(controls.target);
   controls.update();
 }
+function chooseView(name) {
+  viewChoice = name;
+  try { localStorage.setItem('fretview.view', name); } catch { /* storage unavailable */ }
+  setView(lesson || noMicView ? lessonView() : name);
+}
+const lessonView = () => (viewChoice === 'highway' ? 'highway' : 'lesson');
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -450,7 +468,7 @@ async function startLesson(i) {
   $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length}`;
   setCapo(0);
   $('capo').hidden = true;
-  setView('lesson');
+  setView(lessonView());
   if (err) {
     lesson = null;
     retryLesson = i;
@@ -496,7 +514,7 @@ function exitLesson() {
   mic?.expect(null);
   document.body.classList.remove('lesson-mode', 'race');
   $('lesson').hidden = true;
-  setView('player');
+  setView(viewChoice);
   loadSong(state.song);
   lastHud = '';
 }
@@ -853,6 +871,87 @@ function renderZoom(dt) {
   renderer.setViewport(0, 0, window.innerWidth, h);
 }
 
+// ---- Highway view ------------------------------------------------------------
+// Two cameras, both looking along the strings towards the bridge like the note highway in Guitar Hero.
+// Both see the low E on the right and the high e on the left: your own view of the guitar, turned so
+// that the bridge is at the top. The top one rides along the neck behind the fretting hand; the bottom
+// one looks down the strumming lane, where the right-hand cues come towards you and the white line.
+const neckCam = new THREE.PerspectiveCamera(24, 2, 0.5, 400);
+const handCam = new THREE.PerspectiveCamera(42, 3, 0.5, 400);
+const neckFocus = { x0: -3.4, x1: 11, set: false };
+const HIGHWAY_SPLIT = 0.58; // share of the window height for the neck camera
+
+// Point a camera along the strings (+x), tilted down by `tilt`, and place it so that the points
+// (near, y) and (far, y) land at the picture heights nearY and farY (-1 = bottom edge, 1 = top edge).
+// It backs off if the picture is too narrow for halfWidth either side of z.
+function frameAlong(cam, { near, far, y, z, tilt, nearY, farY, halfWidth }) {
+  const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
+  const c = Math.cos(tilt), s = Math.sin(tilt);
+  // A point is at picture height n when its offset from the camera is perpendicular to (a, b).
+  const a1 = s - nearY * t * c, b1 = c + nearY * t * s;
+  const a2 = s - farY * t * c, b2 = c + farY * t * s;
+  const r1 = a1 * near + b1 * y, r2 = a2 * far + b2 * y;
+  const det = a1 * b2 - a2 * b1;
+  let px = (r1 * b2 - r2 * b1) / det, py = (a1 * r2 - a2 * r1) / det;
+  const depth = (near - px) * c - (y - py) * s;
+  const back = Math.max(0, halfWidth / (t * cam.aspect) - depth);
+  px -= back * c;
+  py += back * s;
+  cam.position.set(px, py, z);
+  cam.lookAt(px + c, py - s, z);
+}
+
+function updateNeckCam(dt, aspect, nearY) {
+  // Frame the frets the shape uses; in first position also the nut, with the open markers and the
+  // string names (crossed out when not to be played) just past it.
+  const held = cues.shownShape?.frets.filter((f) => f > 0) ?? [];
+  const lo = held.length ? Math.min(...held) : 1, hi = held.length ? Math.max(...held) : 3;
+  const x0 = lo <= 3 ? -3.4 : fretX(lo - 1) - 0.5;
+  const x1 = fretX(Math.max(hi, lo <= 3 ? 3 : lo + 1)) + 0.8;
+  const k = neckFocus.set ? 1 - Math.exp(-dt * 4) : 1;
+  neckFocus.x0 += (x0 - neckFocus.x0) * k;
+  neckFocus.x1 += (x1 - neckFocus.x1) * k;
+  neckFocus.set = true;
+  neckCam.aspect = aspect;
+  neckCam.updateProjectionMatrix();
+  // The hand in the lower half of the picture, the rest of the neck running away above it.
+  frameAlong(neckCam, {
+    near: neckFocus.x0, far: neckFocus.x1, y: STRING_Y, z: -0.6, tilt: 0.7, nearY, farY: 0.45, halfWidth: 7,
+  });
+}
+
+function renderHighway(dt) {
+  const w = window.innerWidth, h = window.innerHeight;
+  // In a chord lesson the right hand only strums now and then, so the neck gets the whole window,
+  // with the hand above the lesson box.
+  const inLesson = !!(lesson || noMicView);
+  const top = inLesson ? h : Math.round(h * HIGHWAY_SPLIT);
+  const boxTop = inLesson ? $('lesson').getBoundingClientRect().top : h;
+  renderer.setScissorTest(true);
+
+  updateNeckCam(dt, w / top, inLesson ? 1 - (2 * (boxTop - 16)) / h : -0.8);
+  renderer.setScissor(0, h - top, w, top);
+  renderer.setViewport(0, h - top, w, top);
+  renderer.render(scene, neckCam);
+
+  if (top < h) {
+    handCam.aspect = w / (h - top);
+    handCam.updateProjectionMatrix();
+    // The white line near the bottom, the cues coming from the bridge at the top.
+    frameAlong(handCam, {
+      near: STRIKE_X - 1, far: HIGHWAY_END + 1, y: STRING_Y, z: 0, tilt: 0.8, nearY: -0.72, farY: 0.9, halfWidth: 6,
+    });
+    renderer.setScissor(0, 0, w, h - top);
+    renderer.setViewport(0, 0, w, h - top);
+    renderer.render(scene, handCam);
+  }
+  renderer.setScissorTest(false);
+  renderer.setViewport(0, 0, w, h);
+  const line = $('split');
+  line.style.display = top < h ? '' : 'none';
+  line.style.top = `${top - 1}px`;
+}
+
 // Under the close-up, the shape in words: which finger goes on which string and fret.
 let lastFingers = null;
 function renderFingers(shape) {
@@ -1113,10 +1212,14 @@ function frame() {
 }
 
 function render(dt) {
-  controls.update();
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-  renderer.render(scene, camera);
+  if (currentView === 'highway') {
+    renderHighway(dt);
+  } else {
+    controls.update();
+    renderer.render(scene, camera);
+  }
   renderFingers(cues.shownShape);
   if (magnify) renderZoom(dt);
 }
@@ -1226,8 +1329,9 @@ function applySettings() {
   $('latency').value = settings.latency;
   $('lat-val').textContent = `${settings.latency} ms`;
 }
-$('view-player').addEventListener('click', () => setView('player'));
-$('view-top').addEventListener('click', () => setView('top'));
+$('view-highway').addEventListener('click', () => chooseView('highway'));
+$('view-player').addEventListener('click', () => chooseView('player'));
+$('view-top').addEventListener('click', () => chooseView('top'));
 $('magnify').addEventListener('change', (e) => setMagnify(e.target.checked));
 $('zoom-fab').addEventListener('click', () => setMagnify(!magnify));
 $('zoom-close').addEventListener('click', () => setMagnify(false));

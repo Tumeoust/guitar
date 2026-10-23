@@ -16,6 +16,7 @@
 </head>
 <body>
   <canvas id="view"></canvas>
+  <div id="split" hidden></div>
 
   <header id="hud">
     <div class="song">
@@ -62,9 +63,12 @@
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
       <label class="check"><input id="loop" type="checkbox"> Loop song</label>
       <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
-      <div class="row views">
-        <button id="view-player">Player view</button>
-        <button id="view-top">Top view</button>
+      <div class="field">Camera
+        <div class="row views">
+          <button id="view-highway" title="Guitar Hero style: the neck on top, the strumming lane below">Highway</button>
+          <button id="view-player" title="The whole guitar, the way you see your own">Player</button>
+          <button id="view-top">Top</button>
+        </div>
       </div>
 
       <h3>Microphone feedback</h3>
@@ -89,17 +93,17 @@
 
   <div id="legend">
     <div class="legend-title">Left hand</div>
-    <div class="legend-row"><span class="dot" style="--c:#4cc9f0">1</span>index</div>
-    <div class="legend-row"><span class="dot" style="--c:#80ed99">2</span>middle</div>
-    <div class="legend-row"><span class="dot" style="--c:#ffd166">3</span>ring</div>
-    <div class="legend-row"><span class="dot" style="--c:#f472b6">4</span>pinky</div>
+    <div class="legend-row"><span class="dot" style="--c:#22d34b">1</span>index</div>
+    <div class="legend-row"><span class="dot" style="--c:#ff3640">2</span>middle</div>
+    <div class="legend-row"><span class="dot" style="--c:#ffd31a">3</span>ring</div>
+    <div class="legend-row"><span class="dot" style="--c:#2a8cff">4</span>pinky</div>
     <div class="legend-row"><span class="sym ring">○</span>open string (white)</div>
     <div class="legend-row"><span class="sym x">✕</span>don't play</div>
     <div class="legend-title">Right hand</div>
     <div class="legend-row"><span class="sym" style="color:#ffffff">➜</span>strum down (thick → thin)</div>
     <div class="legend-row"><span class="sym" style="color:#aab4c8">➜</span>strum up (thin → thick)</div>
     <div class="legend-row"><span class="sym gem">●</span>pick that string</div>
-    <div class="legend-note">A string glows in the colour of the finger that frets it.</div>
+    <div class="legend-note">Finger colours as on a Guitar Hero 3 neck: green, red, yellow, blue.</div>
   </div>
 
   <div id="feedback"></div>
@@ -149,15 +153,16 @@
   <div id="overlay">
     <div class="card" id="screen-home">
       <h1>Fretview</h1>
-      <p>Play along on a real guitar. You see the guitar the way you see your own when you look down at it:
-        headstock on the left, thickest string closest to you.</p>
+      <p>Play along on a real guitar. Like Guitar Hero, the screen looks along the strings: the neck on top, following
+        your fretting hand, and the strumming lane below. <i>Player</i> view in the settings shows the whole guitar the way
+        you see your own.</p>
       <ul>
         <li><b>Chord lessons:</b> learn one chord at a time. The microphone listens and tells you when it sounds right, or which string needs fixing.
           Then practise changing between them: at your own pace, against the clock, and finally in time with a metronome.</li>
-        <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where. The next shape fades in with a shrinking ring.</li>
-        <li><b>Right hand:</b> arrows and dots slide towards the white line over the soundhole. Strum or pick when they reach it.</li>
+        <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where, in Guitar Hero colours: green, red, yellow, blue. The next shape fades in with a shrinking ring.</li>
+        <li><b>Right hand:</b> arrows and dots come down the lane towards the white line over the soundhole. Strum or pick when they reach it.</li>
       </ul>
-      <p class="muted small keys">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera</p>
+      <p class="muted small keys">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera (Player view)</p>
       <div class="row start-row">
         <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
         <button id="start" class="big">♫ Play songs</button>
