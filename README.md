@@ -3,10 +3,12 @@
 A Guitar Hero–style practice game for a **real guitar** that runs in the browser.
 
 The default **Highway** view looks up the neck from the body, like the note highway in Guitar Hero: the nut is at
-the top and the strings run E A D G B e from left to right, the way chord charts draw them. The camera follows your
-fretting hand up and down the neck. *Player* view (under *Camera* in the settings) shows the whole guitar the way you
-see your own when you look down at it: headstock on the left, thickest string nearest to you. The choice is
-remembered. There is no sheet music and there are no note names. The game only shows what each hand has to do:
+the top and the strings run E A D G B e from left to right, the way chord charts draw them. The camera and the neck
+stay still: the view always shows the first frets with the strum lane below them, and it has no perspective, so
+falling notes keep their size instead of zooming towards you. A plucked string lights up briefly but doesn't move.
+*Player* view (under *Camera* in the settings) shows the whole guitar the way you see your own when you look down at
+it: headstock on the left, thickest string nearest to you. The choice is remembered. There is no sheet music and there
+are no note names. The game only shows what each hand has to do:
 
 - **Left hand.** Coloured gems on the fretboard show which finger goes where, in the fret-button colours of
   Guitar Hero 3: index green, middle red, ring yellow, pinky blue.

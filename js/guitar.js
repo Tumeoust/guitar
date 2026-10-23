@@ -261,10 +261,9 @@ export function buildGuitar() {
     const pinHead = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.12, 12), mat.bone);
     pinHead.position.copy(pin);
     root.add(pinHead);
-    strings.push({ mesh, mat: m, vib: 0, glow: 0, baseZ: mesh.position.z });
+    strings.push({ mesh, mat: m, vib: 0, glow: 0 });
   }
 
-  let t = 0;
   return {
     root,
     strings,
@@ -289,13 +288,10 @@ export function buildGuitar() {
         label.material.opacity = f == null ? 0.35 : 1;
       });
     },
+    // A plucked string lights up briefly. It doesn't move or thicken: the neck stays still.
     update(dt) {
-      t += dt;
       for (const s of strings) {
         s.vib *= Math.exp(-dt * 4);
-        const wobble = Math.sin(t * 90) * 0.03 * s.vib;
-        s.mesh.position.z = s.baseZ + wobble;
-        s.mesh.scale.x = s.mesh.scale.z = 1 + s.vib * 1.2;
         s.mat.emissiveIntensity = Math.min(1, s.glow * 0.3 + s.vib * 0.6);
       }
     },
