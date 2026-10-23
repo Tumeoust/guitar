@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import {
-  fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, STRIKE_X, HIGHWAY_END, NUT_CUE_X,
+  fretX, fingerX, stringZ, boardHalfWidth, STRING_Y, NUT_CUE_X,
 } from './guitar.js';
-import { discTexture, ringTexture, wideLabelTexture, labelTexture, mutedLabelTexture } from './textures.js';
+import { discTexture, ringTexture, crossTexture, strumTexture, wideLabelTexture } from './textures.js';
 import { CHORD_NAMES } from './songs.js';
 
 // The fret-button colours of Guitar Hero 3, in the same order: index = green, middle = red,
 // ring = yellow, pinky = blue.
 export const FINGER_COLORS = { 1: '#22d34b', 2: '#ff3640', 3: '#ffd31a', 4: '#2a8cff' };
-// Colour always means "which finger": a picking cue, a string name and a fretboard dot share the
-// colour of the finger that frets it. Open strings are white.
+// Colour always means "which finger": a picking cue and a fretboard dot share the colour of the
+// finger that frets it. Open strings are white.
 export const OPEN_COLOR = '#ffffff';
 const STRUM_COLORS = { D: '#ffffff', U: '#aab4c8' };
 const MARKER_SIZE = 1.4;
@@ -17,15 +17,12 @@ const MARKER_SIZE = 1.4;
 export function stringColor(frets, fingers, s) {
   return frets[s] > 0 ? FINGER_COLORS[fingers[s] || 1] : OPEN_COLOR;
 }
-const LANE_WIDTH = 7.4;
-// The right-hand lane, white line and beat lines lie just under the strings, in the same plane as the
-// cues, so the cues meet the line from any camera angle.
+// The strum lane runs along the neck from just past the fretting hand towards the body, and the
+// right-hand cues fall down it to the white line, like notes in Guitar Hero. The lane, white line and
+// beat lines lie just under the strings, in the same plane as the cues.
+const LANE_GAP = 0.8; // from the end of the hand's frets to the top of the lane
+const LANE_LEN = 10; // from the top of the lane to the white line
 const LANE_Y = STRING_Y - 0.14;
-// String names just past the nut, next to the strings themselves, so it is easy to tell which
-// string a dot is on.
-const STRING_LETTERS = ['E', 'A', 'D', 'G', 'B', 'e'];
-const NUT_LABEL_X = -2.7;
-const UNUSED_COLOR = '#8e97aa';
 // How long after a chord's last strum (or pick) has crossed the line the next chord takes its place.
 const LET_GO_BEATS = 0.25;
 
@@ -51,24 +48,6 @@ class Pool {
   end() {
     for (let i = this.n; i < this.items.length; i++) this.items[i].visible = false;
   }
-}
-
-function arrowGeometry(len) {
-  // Flat arrow lying in the x/z plane, pointing towards -z, centred on the origin.
-  const head = Math.min(1.1, len * 0.45);
-  const s = new THREE.Shape();
-  const h = len / 2, sw = 0.2, hw = 0.6;
-  s.moveTo(-sw, h);
-  s.lineTo(sw, h);
-  s.lineTo(sw, -h + head);
-  s.lineTo(hw, -h + head);
-  s.lineTo(0, -h);
-  s.lineTo(-hw, -h + head);
-  s.lineTo(-sw, -h + head);
-  s.closePath();
-  const geo = new THREE.ShapeGeometry(s);
-  geo.rotateX(Math.PI / 2);
-  return geo;
 }
 
 // Fingers on neighbouring strings at the same fret (Em, A, D...) would hide each other, so spread
@@ -132,15 +111,18 @@ export class Cues {
       m.renderOrder = 15;
       return m;
     });
-    this.arrowGeos = new Map();
-    this.arrows = new Pool(r, () => {
-      const m = new THREE.Mesh(undefined, new THREE.MeshBasicMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+    // A strum: a bar across the strings to hit, with a ↓ or ↑ on it.
+    this.strumBars = new Pool(r, () => {
+      const m = new THREE.Mesh(
+        new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+      );
       m.renderOrder = 16;
       return m;
     });
     this.beatLines = new Pool(r, () => {
       const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, LANE_WIDTH).rotateX(-Math.PI / 2),
+        new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, depthWrite: false }),
       );
       return m;
@@ -154,18 +136,16 @@ export class Cues {
     this.band.position.y = 0.01;
     r.add(this.band);
 
-    // Right-hand lane over the soundhole
-    const lane = new THREE.Mesh(
-      new THREE.PlaneGeometry(HIGHWAY_END - STRIKE_X + 1.5, LANE_WIDTH).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({ color: 0x05070c, transparent: true, opacity: 0.45, depthWrite: false }),
+    // Strum lane and its white line; placeLane() moves them along with the hand.
+    this.laneMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0x05070c, transparent: true, opacity: 0.4, depthWrite: false }),
     );
-    lane.position.set((STRIKE_X + HIGHWAY_END) / 2 + 0.25, LANE_Y, 0);
-    r.add(lane);
+    r.add(this.laneMesh);
 
     this.strikeMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false });
-    const strike = new THREE.Mesh(new THREE.PlaneGeometry(0.22, LANE_WIDTH).rotateX(-Math.PI / 2), this.strikeMat);
-    strike.position.set(STRIKE_X, LANE_Y + 0.04, 0);
-    r.add(strike);
+    this.strike = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 1).rotateX(-Math.PI / 2), this.strikeMat);
+    r.add(this.strike);
     this.strikeFlash = 0;
     this.strikeColor = new THREE.Color(0xffffff);
 
@@ -175,11 +155,41 @@ export class Cues {
         new THREE.RingGeometry(0.28, 0.4, 32).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false }),
       );
-      m.position.set(STRIKE_X, STRING_Y - 0.02, stringZ(i, STRIKE_X));
       m.renderOrder = 14;
       r.add(m);
       this.targets.push({ mesh: m, flash: 0 });
     }
+
+    // Where the fretting hand works along the neck (x0..x1) and where the lane runs (from..to, to being
+    // the white line). The highway camera frames these.
+    this.hand = { x0: -1.6, x1: fretX(4) + 0.3 };
+    this.lane = { from: 0, to: 0 };
+    this.placeLane();
+  }
+
+  placeLane() {
+    const from = this.hand.x1 + LANE_GAP, to = from + LANE_LEN;
+    this.lane.from = from;
+    this.lane.to = to;
+    this.laneWidth = (stringZ(0, to) + 0.9) * 2;
+    this.laneMesh.position.set((from + to) / 2, LANE_Y, 0);
+    this.laneMesh.scale.set(to - from + 0.6, 1, this.laneWidth);
+    this.strike.position.set(to, LANE_Y + 0.04, 0);
+    this.strike.scale.set(1, 1, this.laneWidth);
+    this.targets.forEach((t, i) => t.mesh.position.set(to, STRING_Y - 0.02, stringZ(i, to)));
+  }
+
+  // Follow the hand to the frets this shape uses: in first position from the nut (with its open and
+  // muted markers), else from the fret behind the lowest finger. Eased, so the view glides along.
+  followHand(frets, dt) {
+    const held = frets?.filter((f) => f > 0) ?? [];
+    const lo = held.length ? Math.min(...held) : 1, hi = held.length ? Math.max(...held) : 3;
+    const x0 = lo <= 3 ? -1.6 : fretX(lo - 1) - 0.5;
+    const x1 = fretX(Math.max(hi, lo <= 3 ? 4 : lo + 1)) + 0.3;
+    const k = 1 - Math.exp(-dt * 4);
+    this.hand.x0 += (x0 - this.hand.x0) * k;
+    this.hand.x1 += (x1 - this.hand.x1) * k;
+    this.placeLane();
   }
 
   flashStrings(strings) {
@@ -219,15 +229,15 @@ export class Cues {
     for (let i = 0; i < 6; i++) {
       const f = frets[i];
       if (f == null) continue;
-      // Muted strings (-1) are shown by the red ✕ on the string label at the tuning pegs.
-      if (f === -1) continue;
-      if (f === 0) {
+      if (f === -1) {
+        this.marker(crossTexture('#e8ebf2'), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.9, alpha, order);
+      } else if (f === 0) {
         this.marker(ringTexture(OPEN_COLOR, 14), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.95, alpha, order);
       } else {
         const finger = fingers[i] || 1;
         const color = FINGER_COLORS[finger];
         const p = this.fingerPos(i, f, staggerOf(frets, fingers, i));
-        this.marker(discTexture(color, String(finger)), p.x, p.y, p.z, MARKER_SIZE * (1 + pulse * 0.35), alpha, order);
+        this.marker(discTexture(color), p.x, p.y, p.z, MARKER_SIZE * (1 + pulse * 0.35), alpha, order);
         if (approach != null) {
           this.marker(ringTexture(color, 8), p.x, p.y, p.z, MARKER_SIZE * (1.05 + approach * 2.6), alpha * (1 - approach * 0.6), 21);
         }
@@ -271,24 +281,6 @@ export class Cues {
     }
   }
 
-  // Each string's name in the colour of the finger that frets it (white when open), crossed out
-  // in red when it must not be played, dimmed when the shape doesn't use it.
-  drawStringNames(shape) {
-    for (let i = 0; i < 6; i++) {
-      const f = shape ? shape.frets[i] : undefined;
-      const tex = f === -1 ? mutedLabelTexture(STRING_LETTERS[i])
-        : labelTexture(STRING_LETTERS[i], f == null ? UNUSED_COLOR : stringColor(shape.frets, shape.fingers, i));
-      const z = stringZ(i, 0) * 1.12;
-      this.marker(tex, NUT_LABEL_X, 0, z, 1.5, shape && f == null ? 0.35 : 1, 23);
-    }
-  }
-
-  arrowGeo(len) {
-    const key = Math.round(len * 10);
-    if (!this.arrowGeos.has(key)) this.arrowGeos.set(key, arrowGeometry(key / 10));
-    return this.arrowGeos.get(key);
-  }
-
   // overrun: how many beats right-hand cues keep travelling past the strike line before they
   // disappear (practice mode, so the cue doesn't stall while the microphone is still listening).
   // hold: beat of a cue practice mode is still waiting for; its chord stays on the neck until then.
@@ -297,7 +289,7 @@ export class Cues {
     this.bars.begin();
     this.lines.begin();
     this.gems.begin();
-    this.arrows.begin();
+    this.strumBars.begin();
     this.beatLines.begin();
 
     // ---- Left hand -------------------------------------------------------
@@ -346,10 +338,12 @@ export class Cues {
     }
 
     this.shownShape = cur ? cur.shape : next?.shape ?? null;
-    this.drawStringNames(this.shownShape);
+    this.followHand(this.shownShape?.frets, dt);
 
     // ---- Right hand ------------------------------------------------------
-    const span = HIGHWAY_END - STRIKE_X;
+    // Cues fall from the top of the lane (`from`) down to the white line (`to`).
+    const { from, to } = this.lane;
+    const span = to - from;
     for (const ev of song.right) {
       const d = ev.beat - beat;
       if (d > lookBeats) break;
@@ -357,14 +351,14 @@ export class Cues {
       if (overrun > 0) {
         // Keep flowing past the line: dim a little up to `overrun`, then fade out quickly.
         if (d < -overrun * 1.4) continue;
-        x = STRIKE_X + (d / lookBeats) * span;
+        x = to - (d / lookBeats) * span;
         fade = d >= 0 ? Math.min(1, (lookBeats - d) * 2)
           : d >= -overrun ? 1 + (0.4 * d) / overrun
             : 0.6 * (1.4 + d / overrun) / 0.4;
         grow = 1;
       } else {
         if (d < -0.5) continue;
-        x = d > 0 ? STRIKE_X + (d / lookBeats) * span : STRIKE_X;
+        x = d > 0 ? to - (d / lookBeats) * span : to;
         fade = d < 0 ? Math.max(0, 1 + d * 2) : Math.min(1, (lookBeats - d) * 2);
         grow = d < 0 ? 1 - d * 2.5 : 1;
       }
@@ -379,14 +373,13 @@ export class Cues {
         gem.scale.set(1.6 * grow, 0.7 * grow, grow);
       } else {
         const zs = ev.strings.map((s) => stringZ(s, x));
-        const z0 = Math.max(...zs), z1 = Math.min(...zs);
-        const arrow = this.arrows.get();
-        arrow.geometry = this.arrowGeo(z0 - z1 + 1.0);
-        arrow.material.color.set(STRUM_COLORS[ev.dir]);
-        arrow.material.opacity = 0.9 * fade;
-        arrow.position.set(x, STRING_Y + 0.25, (z0 + z1) / 2);
-        arrow.rotation.y = ev.dir === 'U' ? Math.PI : 0;
-        arrow.scale.set(grow, 1, 1);
+        const z0 = Math.max(...zs), z1 = Math.min(...zs), zc = (z0 + z1) / 2;
+        const bar = this.strumBars.get();
+        bar.material.color.set(STRUM_COLORS[ev.dir]);
+        bar.material.opacity = 0.75 * fade;
+        bar.position.set(x, STRING_Y + 0.15, zc);
+        bar.scale.set(0.45 * grow, 1, z0 - z1 + 0.7);
+        this.marker(strumTexture(ev.dir, STRUM_COLORS[ev.dir]), x, STRING_Y + 0.4, zc, 1.3 * grow, fade, 17);
       }
     }
 
@@ -395,8 +388,8 @@ export class Cues {
     for (let k = Math.ceil(beat / every) * every; k - beat <= lookBeats; k += every) {
       const line = this.beatLines.get();
       const bar = ((k % bpb) + bpb) % bpb === 0;
-      line.position.set(STRIKE_X + ((k - beat) / lookBeats) * span, LANE_Y + 0.02, 0);
-      line.scale.set(bar ? 0.16 : 0.07, 1, 1);
+      line.position.set(to - ((k - beat) / lookBeats) * span, LANE_Y + 0.02, 0);
+      line.scale.set(bar ? 0.16 : 0.07, 1, this.laneWidth);
       line.material.opacity = bar ? 0.45 : 0.18;
     }
 
@@ -412,7 +405,7 @@ export class Cues {
     this.bars.end();
     this.lines.end();
     this.gems.end();
-    this.arrows.end();
+    this.strumBars.end();
     this.beatLines.end();
   }
 }

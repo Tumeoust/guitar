@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { buildGuitar, fretX, STRIKE_X, STRING_Y, HIGHWAY_END } from './guitar.js';
+import { buildGuitar, fretX, STRING_Y } from './guitar.js';
 import { Cues, FINGER_COLORS } from './cues.js';
 import { SONGS, CHORDS, CHORD_NAMES, strumEvent } from './songs.js';
 import { GuitarAudio } from './audio.js';
@@ -39,7 +39,7 @@ controls.minDistance = 10;
 
 // "Player" looks down over the low-E side of the neck, like you do when holding a guitar.
 const VIEWS = {
-  highway: null, // two cameras, see renderHighway()
+  highway: null, // follows the hand, see renderHighway()
   player: { pos: [52, 60, 62], target: [28, -4, 0] },
   top: { pos: [30, 100, 3], target: [30, 0, 0] },
   // Lessons are about the fretting hand: closer in on the first frets.
@@ -58,7 +58,6 @@ function setView(name) {
   // The highway cameras follow the song on their own; dragging moves only the other views.
   controls.enabled = name !== 'highway';
   document.body.classList.toggle('highway', name === 'highway');
-  $('split').hidden = name !== 'highway';
   const v = VIEWS[name];
   if (!v) return;
   // The views are framed for a 16:9-ish window; back off on narrower ones so the whole guitar fits.
@@ -705,7 +704,7 @@ function showScreen(name) {
   if (document.body.classList.contains('lesson-mode')) exitLesson();
   if (name !== 'tuner') tuner?.stop();
   screen = name;
-  for (const n of ['home', 'songs', 'lessons', 'tuner', 'results']) $(`screen-${n}`).hidden = n !== name;
+  for (const n of ['home', 'songs', 'lessons', 'tuner', 'help', 'results']) $(`screen-${n}`).hidden = n !== name;
   $('overlay').hidden = false;
   document.body.classList.add('menu');
   if (name === 'songs') {
@@ -856,11 +855,11 @@ function renderZoom(dt) {
   const aspect = r.width / r.height;
   const tan = Math.tan(THREE.MathUtils.degToRad(zoomCam.fov / 2));
   // Across the strings: the chord name above the high e down to the fret numbers below the low E.
-  const d = Math.max(10.5 / (2 * tan), zoomFocus.w / (2 * tan * aspect));
+  const d = Math.max(12.5 / (2 * tan), zoomFocus.w / (2 * tan * aspect));
   zoomCam.aspect = aspect;
   zoomCam.updateProjectionMatrix();
-  zoomCam.position.set(zoomFocus.x, d * Math.cos(ZOOM_TILT), -0.4 + d * Math.sin(ZOOM_TILT));
-  zoomCam.lookAt(zoomFocus.x, 0, -0.4);
+  zoomCam.position.set(zoomFocus.x, d * Math.cos(ZOOM_TILT), -1.4 + d * Math.sin(ZOOM_TILT));
+  zoomCam.lookAt(zoomFocus.x, 0, -1.4);
 
   const h = window.innerHeight;
   renderer.setScissorTest(true);
@@ -872,87 +871,50 @@ function renderZoom(dt) {
 }
 
 // ---- Highway view ------------------------------------------------------------
-// Two cameras, both looking along the strings towards the bridge like the note highway in Guitar Hero.
-// Both see the low E on the right and the high e on the left: your own view of the guitar, turned so
-// that the bridge is at the top. The top one rides along the neck behind the fretting hand; the bottom
-// one looks down the strumming lane, where the right-hand cues come towards you and the white line.
+// One camera looking up the neck from the body, like the note highway in Guitar Hero: the nut at the
+// top and the low E on the left, the way chord charts draw it. It follows the fretting hand, and below
+// the hand the strums and picks fall down the strum lane to the white line.
 const neckCam = new THREE.PerspectiveCamera(24, 2, 0.5, 400);
-const handCam = new THREE.PerspectiveCamera(42, 3, 0.5, 400);
-const neckFocus = { x0: -3.4, x1: 11, set: false };
-const HIGHWAY_SPLIT = 0.58; // share of the window height for the neck camera
 
-// Point a camera along the strings (+x), tilted down by `tilt`, and place it so that the points
-// (near, y) and (far, y) land at the picture heights nearY and farY (-1 = bottom edge, 1 = top edge).
-// It backs off if the picture is too narrow for halfWidth either side of z.
-function frameAlong(cam, { near, far, y, z, tilt, nearY, farY, halfWidth }) {
+// Point a camera along the strings, towards the headstock (dir = -1) or the bridge (dir = 1), tilted
+// down by `tilt`, and place it so that the points (near, y) and (far, y) land at the picture heights
+// nearY and farY (-1 = bottom edge, 1 = top edge). It backs off if the picture is too narrow for
+// halfWidth either side of z.
+function frameAlong(cam, { dir, near, far, y, z, tilt, nearY, farY, halfWidth }) {
   const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
   const c = Math.cos(tilt), s = Math.sin(tilt);
-  // A point is at picture height n when its offset from the camera is perpendicular to (a, b).
+  // u runs along the view direction. A point is at picture height n when its offset from the
+  // camera is perpendicular to (a, b).
   const a1 = s - nearY * t * c, b1 = c + nearY * t * s;
   const a2 = s - farY * t * c, b2 = c + farY * t * s;
-  const r1 = a1 * near + b1 * y, r2 = a2 * far + b2 * y;
+  const r1 = a1 * dir * near + b1 * y, r2 = a2 * dir * far + b2 * y;
   const det = a1 * b2 - a2 * b1;
-  let px = (r1 * b2 - r2 * b1) / det, py = (a1 * r2 - a2 * r1) / det;
-  const depth = (near - px) * c - (y - py) * s;
+  let pu = (r1 * b2 - r2 * b1) / det, py = (a1 * r2 - a2 * r1) / det;
+  const depth = (dir * near - pu) * c - (y - py) * s;
   const back = Math.max(0, halfWidth / (t * cam.aspect) - depth);
-  px -= back * c;
+  pu -= back * c;
   py += back * s;
-  cam.position.set(px, py, z);
-  cam.lookAt(px + c, py - s, z);
+  cam.position.set(dir * pu, py, z);
+  cam.lookAt(dir * (pu + c), py - s, z);
 }
 
-function updateNeckCam(dt, aspect, nearY) {
-  // Frame the frets the shape uses; in first position also the nut, with the open markers and the
-  // string names (crossed out when not to be played) just past it.
-  const held = cues.shownShape?.frets.filter((f) => f > 0) ?? [];
-  const lo = held.length ? Math.min(...held) : 1, hi = held.length ? Math.max(...held) : 3;
-  const x0 = lo <= 3 ? -3.4 : fretX(lo - 1) - 0.5;
-  const x1 = fretX(Math.max(hi, lo <= 3 ? 3 : lo + 1)) + 0.8;
-  const k = neckFocus.set ? 1 - Math.exp(-dt * 4) : 1;
-  neckFocus.x0 += (x0 - neckFocus.x0) * k;
-  neckFocus.x1 += (x1 - neckFocus.x1) * k;
-  neckFocus.set = true;
-  neckCam.aspect = aspect;
-  neckCam.updateProjectionMatrix();
-  // The hand in the lower half of the picture, the rest of the neck running away above it.
-  frameAlong(neckCam, {
-    near: neckFocus.x0, far: neckFocus.x1, y: STRING_Y, z: -0.6, tilt: 0.7, nearY, farY: 0.45, halfWidth: 7,
-  });
-}
-
-function renderHighway(dt) {
+function renderHighway() {
   const w = window.innerWidth, h = window.innerHeight;
-  // In a chord lesson the right hand only strums now and then, so the neck gets the whole window,
-  // with the hand above the lesson box.
-  const inLesson = !!(lesson || noMicView);
-  const top = inLesson ? h : Math.round(h * HIGHWAY_SPLIT);
-  const boxTop = inLesson ? $('lesson').getBoundingClientRect().top : h;
-  renderer.setScissorTest(true);
-
-  updateNeckCam(dt, w / top, inLesson ? 1 - (2 * (boxTop - 16)) / h : -0.8);
-  renderer.setScissor(0, h - top, w, top);
-  renderer.setViewport(0, h - top, w, top);
+  // From the nut side of the hand at the top to just past the white line at the bottom. In a chord
+  // lesson the white line stays above the lesson box when the box reaches across the middle.
+  const box = $('lesson').getBoundingClientRect();
+  const boxTop = (lesson || noMicView) && box.left < w / 2 + 160 ? box.top : h;
+  neckCam.aspect = w / h;
+  neckCam.updateProjectionMatrix();
+  frameAlong(neckCam, {
+    dir: -1, near: cues.lane.to + 1.2, far: cues.hand.x0, y: STRING_Y, z: -0.6, tilt: 0.85,
+    nearY: Math.max(-0.88, 1 - (2 * (boxTop - 16)) / h), farY: 0.86, halfWidth: 7,
+  });
   renderer.render(scene, neckCam);
-
-  if (top < h) {
-    handCam.aspect = w / (h - top);
-    handCam.updateProjectionMatrix();
-    // The white line near the bottom, the cues coming from the bridge at the top.
-    frameAlong(handCam, {
-      near: STRIKE_X - 1, far: HIGHWAY_END + 1, y: STRING_Y, z: 0, tilt: 0.8, nearY: -0.72, farY: 0.9, halfWidth: 6,
-    });
-    renderer.setScissor(0, 0, w, h - top);
-    renderer.setViewport(0, 0, w, h - top);
-    renderer.render(scene, handCam);
-  }
-  renderer.setScissorTest(false);
-  renderer.setViewport(0, 0, w, h);
-  const line = $('split');
-  line.style.display = top < h ? '' : 'none';
-  line.style.top = `${top - 1}px`;
 }
 
 // Under the close-up, the shape in words: which finger goes on which string and fret.
+const FINGER_NAMES = { 1: 'index', 2: 'middle', 3: 'ring', 4: 'pinky' };
 let lastFingers = null;
 function renderFingers(shape) {
   const key = shape ? `${shape.frets}|${shape.fingers}` : '';
@@ -979,7 +941,7 @@ function renderFingers(shape) {
     return el;
   };
   const items = [...byFinger.values()].sort((a, b) => a.finger - b.finger).map(({ finger, fret, strings }) => item(
-    `<i class="dot" style="--c:${FINGER_COLORS[finger]}">${finger}</i> <b>${names(strings)}</b> string${strings.length > 1 ? 's' : ''}, fret ${fret}`,
+    `<i class="dot" style="--c:${FINGER_COLORS[finger]}"></i> ${FINGER_NAMES[finger]}: <b>${names(strings)}</b> string${strings.length > 1 ? 's' : ''}, fret ${fret}`,
   ));
   if (open.length) items.push(item(`<i class="sym ring">○</i> open: ${names(open)}`));
   if (muted.length) items.push(item(`<i class="sym x">✕</i> don't play: ${names(muted)}`));
@@ -1215,7 +1177,7 @@ function render(dt) {
   renderer.setScissorTest(false);
   renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
   if (currentView === 'highway') {
-    renderHighway(dt);
+    renderHighway();
   } else {
     controls.update();
     renderer.render(scene, camera);
@@ -1257,6 +1219,7 @@ select.addEventListener('change', () => {
 $('start').addEventListener('click', () => showScreen('songs'));
 $('start-lessons').addEventListener('click', () => showScreen('lessons'));
 $('start-tuner').addEventListener('click', () => showScreen('tuner'));
+$('start-help').addEventListener('click', () => showScreen('help'));
 $('tuner-open').addEventListener('click', () => showScreen('tuner'));
 buildTuner();
 $('menu-open').addEventListener('click', () => showScreen('home'));

@@ -13,8 +13,6 @@ export const NUM_FRETS = 19;
 export const STRING_Y = 0.42;
 export const TOP_Y = -0.75;            // soundboard height
 export const SOUNDHOLE_X = 48.5;
-export const STRIKE_X = 50.5;          // where the picking hand hits the strings
-export const HIGHWAY_END = 63;         // right-hand cues start here and travel to STRIKE_X
 export const NUT_CUE_X = -1.1;         // where open / muted markers sit
 
 const NUT_SPREAD = 3.5;

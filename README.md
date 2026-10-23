@@ -2,29 +2,33 @@
 
 A Guitar Hero–style practice game for a **real guitar** that runs in the browser.
 
-The default **Highway** view splits the screen like Guitar Hero: two cameras look along the strings towards the
-bridge. The top one rides along the neck behind your fretting hand and follows it up and down the neck; the bottom
-one looks down the strumming lane, where the right-hand cues come towards you. Both show the low E on the right and
-the high e on the left: your own view of the guitar, turned so the bridge is at the top. *Player* view (under
-*Camera* in the settings) shows the whole guitar the way you see your own when you look down at it: headstock on the
-left, thickest string nearest to you. The choice is remembered. There is no sheet music and there are no note
-names. The game only shows what each hand has to do:
+The default **Highway** view looks up the neck from the body, like the note highway in Guitar Hero: the nut is at
+the top and the strings run E A D G B e from left to right, the way chord charts draw them. The camera follows your
+fretting hand up and down the neck. *Player* view (under *Camera* in the settings) shows the whole guitar the way you
+see your own when you look down at it: headstock on the left, thickest string nearest to you. The choice is
+remembered. There is no sheet music and there are no note names. The game only shows what each hand has to do:
 
-- **Left hand.** Coloured dots on the fretboard show which finger goes where, in the fret-button colours of
-  Guitar Hero 3: 1 = index (green), 2 = middle (red), 3 = ring (yellow), 4 = pinky (blue).
-  ○ at the nut means play the string open, and a grey ✕ over the string's letter means don't play it.
-  Each string's letter (E A D G B e) also sits right next to the nut, in the colour of the finger that frets it.
+- **Left hand.** Coloured gems on the fretboard show which finger goes where, in the fret-button colours of
+  Guitar Hero 3: index green, middle red, ring yellow, pinky blue.
+  ○ at the nut means play the string open, and ✕ at the nut means don't play it.
   Fret numbers 1–5 are written along the low E side. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
-  Colour always means a finger: a string's letter at the nut and a picking cue on it have the colour of the
-  finger fretting it, or white when the string is open.
+  Colour always means a finger: a picking cue has the colour of the finger fretting its string, or white when the
+  string is open.
   The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
   As soon as the last strum of a chord has gone past the line, the neck already shows the next chord, so your
   fingers can move before its first strum arrives. Below 100 % speed, a chord the game is still waiting for
   stays on the neck until it has been played right.
-- **Right hand.** Cues slide along the strings from the bridge towards the white line over the soundhole.
-  Strum or pick when they reach it. In the Highway view they come down the lane towards you.
-  - White arrow: strum down (thick → thin strings). Grey arrow: strum up.
+- **Right hand.** Below the hand, strums and picks fall down the strum lane to the white line, like notes in
+  Guitar Hero. Strum or pick when they reach it.
+  - A bar across the strings: strum those strings. White with ↓: strum down (thick → thin strings).
+    Grey with ↑: strum up.
   - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
+
+**📖 How to read the screen** on the start screen explains all of this, with the keys.
+
+The song title, the chord now and next, and where you are in the song sit in a small box in the bottom-left
+corner, with a progress bar you can click to jump. Lesson and practice-speed feedback appear in the bottom-right
+corner.
 
 ## Getting around
 
@@ -35,7 +39,7 @@ The start screen offers **Chord lessons** and **Play songs**. Neither starts any
 - **Chord lessons** opens the list of lessons. Finished lessons get a ✓ and are remembered, and the big button
   continues with the first one you haven't done yet. Any lesson can also be started straight from the list.
 
-**🎵 Tune your guitar first** (under the two buttons, or *Open tuner* next to the small tuner readout in the
+**🎵 Tune your guitar first** (under the two buttons, next to *How to read the screen*, or *Open tuner* next to the small tuner readout in the
 settings) opens the tuner. Play one string at a time: it works out which string you're playing, and a needle
 shows how many cents sharp or flat it is, moving as the pitch changes, with a hint to tighten or loosen.
 Once a string has stayed within ±5 cents for a moment, a ✓ pops up with a chime and the string gets a ✓ in the
@@ -136,7 +140,7 @@ Microphone access needs a secure context: `localhost` or HTTPS.
 | R                  | Restart (with a one-bar count-in)      |
 | ← / →              | Jump back / forward one bar            |
 | Drag / scroll      | Move / zoom the camera (Player and Top view) |
-| Camera             | Highway (neck on top, strumming lane below), Player or Top |
+| Camera             | Highway (looking up the neck, strums falling to the line), Player or Top |
 | Practice speed     | 25 / 50 / 75 / 100 %; below 100 % the song waits for you |
 | Look-ahead slider  | How early cues appear                  |
 | Play-along sound   | Synthesised guitar playing the part (off by default) |
