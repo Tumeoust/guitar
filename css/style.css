@@ -266,6 +266,8 @@ body.lesson-mode.race .chords > div:nth-child(2) { display: block; }
 .card-head h2 { margin: 0; font-size: 22px; }
 .card-head .back { flex: 0 0 auto; }
 #song-go, #lesson-continue { align-self: center; }
+.capo-row { display: flex; align-items: center; gap: 10px; }
+.capo-row select { flex: 0 0 auto; }
 button.link { background: none; border: none; color: var(--muted); margin-top: 12px; }
 button.link:hover { color: var(--text); background: none; }
 

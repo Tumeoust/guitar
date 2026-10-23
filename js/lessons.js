@@ -75,6 +75,13 @@ export const LESSONS = [
   { group: 'Bm, G and D (One)', title: 'In time: Bm ↔ G', kind: 'song', song: 'drill-bm-g',
     tip: 'The main change of One. After this, try the song itself.' },
 
+  { group: 'Em, C, D, G and Am (I See Fire)', title: 'Changing Em → C → D', chords: ['Em', 'C', 'D', 'Em', 'C', 'D', 'Em'], reps: 1,
+    tip: 'Em → C: ring finger to the A string at the 3rd fret, middle to the D string at the 2nd, index onto the B string at the 1st. C → D: aim the index at the G string at the 2nd fret first. D → Em: middle and ring onto the A and D strings at the 2nd fret.' },
+  { group: 'Em, C, D, G and Am (I See Fire)', title: 'Changing Am → Em → G → D', chords: ['Am', 'Em', 'G', 'D', 'Am', 'Em', 'G', 'D', 'Am'], reps: 1,
+    tip: 'The bridge of I See Fire. Am → Em: middle and ring each move one string towards the thick strings, the index lifts off. Em → G: middle to the low E at the 3rd fret, index to the A string at the 2nd, ring to the high e at the 3rd. G → D: lead with the index on the G string. D → Am: index to the B string at the 1st fret, middle and ring onto the D and G strings.' },
+  { group: 'Em, C, D, G and Am (I See Fire)', title: 'In time: Em – C – D', kind: 'song', song: 'drill-i-see-fire',
+    tip: 'The chorus changes of I See Fire. After this, try the song itself — with a capo on the 6th fret.' },
+
   { group: 'Am, E, A and D', title: 'Changing Am ↔ E', chords: ['Am', 'E', 'Am', 'E', 'Am', 'E'], reps: 1,
     tip: 'Am and E are the same shape, one string apart. Move all three fingers together.' },
   { group: 'Am, E, A and D', title: 'Quick changes Am ↔ E', kind: 'race', chords: ['Am', 'E'], targets: [3, 2, 1.5], per: 4,

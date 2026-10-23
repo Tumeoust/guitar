@@ -116,7 +116,8 @@ export function buildGuitar() {
     board: new THREE.MeshStandardMaterial({ color: 0x2b1a12, roughness: 0.8 }),
     fret: new THREE.MeshStandardMaterial({ color: 0xd8dde6, metalness: 0.9, roughness: 0.25 }),
     bone: new THREE.MeshStandardMaterial({ color: 0xf1ead8, roughness: 0.4 }),
-    pearl: new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.3, emissive: 0x222018 }),
+    // Inlays stay muted, so they don't read as the white open-string and pick markers.
+    pearl: new THREE.MeshStandardMaterial({ color: 0x8c877d, roughness: 0.5 }),
     dark: new THREE.MeshStandardMaterial({ color: 0x120c09, roughness: 0.6 }),
     hole: new THREE.MeshBasicMaterial({ color: 0x050403 }),
     chrome: new THREE.MeshStandardMaterial({ color: 0xcfd5de, metalness: 0.5, roughness: 0.3 }),
@@ -178,17 +179,27 @@ export function buildGuitar() {
     d.position.set(x, 0.005, z);
     root.add(d);
   };
-  // Inlay dots, and fret numbers by the low E: every fret in first position, then at the dots.
+  // Inlay dots, and a fret number by the low E at every fret; setCapo() picks which ones show.
   const DOTS = [3, 5, 7, 9, 12, 15, 17];
-  for (const n of [1, 2, 3, 4, 5, 7, 9, 12, 15, 17]) {
+  const fretLabels = [null];
+  for (let n = 1; n <= NUM_FRETS; n++) {
     const x = (fretX(n - 1) + fretX(n)) / 2;
     if (n === 12) { addDot(x, 1.2); addDot(x, -1.2); } else if (DOTS.includes(n)) addDot(x, 0);
 
-    const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: labelTexture(String(n)), transparent: true, depthWrite: false }));
+    const label = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false }));
     label.scale.setScalar(2);
     label.position.set(x, 0.2, boardHalfWidth(x) + 1.0);
     root.add(label);
+    fretLabels.push(label);
   }
+
+  // Capo: a bar across the strings just behind its fret, like a finger pressing all six.
+  const capoMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.55, 0.4, 1),
+    new THREE.MeshStandardMaterial({ color: 0x1d2027, roughness: 0.5, metalness: 0.3 }),
+  );
+  capoMesh.visible = false;
+  root.add(capoMesh);
 
   // Headstock with tuners, tilted back from the nut
   const head = new THREE.Group();
@@ -264,7 +275,7 @@ export function buildGuitar() {
     strings.push({ mesh, mat: m, vib: 0, glow: 0 });
   }
 
-  return {
+  const api = {
     root,
     strings,
     pluck(i, amount = 1) {
@@ -274,6 +285,27 @@ export function buildGuitar() {
     // Steady glow for strings that matter right now (0..1).
     setGlow(i, amount) {
       strings[i].glow = amount;
+    },
+    // Fret numbers count from the capo, the way chord sheets and the lesson tips do: every fret in
+    // first position, then at the inlay dots.
+    setCapo(capo) {
+      fretLabels.forEach((label, n) => {
+        if (!label) return;
+        const rel = n - capo;
+        label.visible = [1, 2, 3, 4, 5, 7, 9, 12, 15, 17].includes(rel);
+        if (!label.visible) return;
+        const tex = labelTexture(String(rel));
+        if (label.material.map !== tex) {
+          label.material.map = tex;
+          label.material.needsUpdate = true;
+        }
+      });
+      capoMesh.visible = capo > 0;
+      if (capo > 0) {
+        const x = fingerX(capo);
+        capoMesh.position.set(x, STRING_Y + 0.1, 0);
+        capoMesh.scale.z = boardHalfWidth(x) * 2 + 0.6;
+      }
     },
     // Show at the tuning pegs which strings to play: muted strings (-1) get a red ✕, strings the
     // shape doesn't use (null) are dimmed.
@@ -296,4 +328,6 @@ export function buildGuitar() {
       }
     },
   };
+  api.setCapo(0);
+  return api;
 }

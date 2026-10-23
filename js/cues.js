@@ -135,10 +135,21 @@ export class Cues {
       this.targets.push({ mesh: m, flash: 0 });
     }
 
-    // The lane runs from just past the 4th fret towards the body, the white line at its far end. Like
-    // the highway camera, it stays put: every shape in the songs and lessons fits in the first 4 frets.
-    const from = fretX(4) + 0.3 + LANE_GAP, to = from + LANE_LEN;
-    this.lane = { from, to };
+    this.lane = { from: 0, to: 0 };
+    this.setCapo(0);
+  }
+
+  // With a capo, every shape moves up the neck: its frets count from the capo, and the open / muted
+  // markers sit just above the capo instead of at the nut (nutX).
+  setCapo(capo) {
+    this.capo = capo;
+    this.nutX = capo > 0 ? fingerX(capo) - 1 : NUT_CUE_X;
+    // The lane runs from just past the 4th fret above the capo towards the body, the white line at its
+    // far end. Like the highway camera, it stays put while playing: every shape in the songs and
+    // lessons fits in 4 frets.
+    const from = fretX(capo + 4) + 0.3 + LANE_GAP, to = from + LANE_LEN;
+    this.lane.from = from;
+    this.lane.to = to;
     this.laneWidth = (stringZ(0, to) + 0.9) * 2;
     this.laneMesh.position.set((from + to) / 2, LANE_Y, 0);
     this.laneMesh.scale.set(to - from + 0.6, 1, this.laneWidth);
@@ -170,7 +181,7 @@ export class Cues {
   }
 
   fingerPos(i, fret) {
-    const x = fingerX(fret);
+    const x = fingerX(this.capo + fret);
     return new THREE.Vector3(x, STRING_Y + 0.3, stringZ(i, Math.max(x, 0)));
   }
 
@@ -185,9 +196,9 @@ export class Cues {
       if (f == null) continue;
       // Open and muted markers at the nut only for the shape to hold, or they would pile up there.
       if (f === -1) {
-        if (!ghost) this.marker(crossTexture('#e8ebf2'), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.7, alpha, order);
+        if (!ghost) this.marker(crossTexture('#e8ebf2'), this.nutX, STRING_Y + 0.3, stringZ(i, Math.max(this.nutX, 0)), 0.7, alpha, order);
       } else if (f === 0) {
-        if (!ghost) this.marker(ringTexture(OPEN_COLOR, 14), NUT_CUE_X, STRING_Y + 0.3, stringZ(i, 0), 0.75, alpha, order);
+        if (!ghost) this.marker(ringTexture(OPEN_COLOR, 14), this.nutX, STRING_Y + 0.3, stringZ(i, Math.max(this.nutX, 0)), 0.75, alpha, order);
       } else {
         const finger = fingers[i] || 1;
         const color = FINGER_COLORS[finger];
@@ -246,7 +257,7 @@ export class Cues {
       const u = (next.beat - beat) / lookBeats;
       this.drawShape(next.shape, 0.35 + 0.5 * (1 - u), true);
     }
-    const held = (cur || next)?.shape.frets.filter((f) => f > 0) ?? [];
+    const held = (cur || next)?.shape.frets.filter((f) => f > 0).map((f) => f + this.capo) ?? [];
     if (held.length) {
       const x0 = fretX(Math.min(...held) - 1), x1 = fretX(Math.max(...held));
       const hw = boardHalfWidth(x1);
@@ -260,7 +271,7 @@ export class Cues {
     // Chord name floating just beyond the high e, next to the finger markers, so name and shape go together.
     const named = cur || next;
     if (named?.name) {
-      const x = held.length ? (fretX(Math.min(...held) - 1) + fretX(Math.max(...held))) / 2 : 1.8;
+      const x = held.length ? (fretX(Math.min(...held) - 1) + fretX(Math.max(...held))) / 2 : fretX(this.capo + 1) - 1.8;
       const label = this.marker(wideLabelTexture(CHORD_NAMES[named.name] || named.name), x, 1.2, -(boardHalfWidth(x) + 3.6), 1, cur ? 1 : 0.5, 23);
       label.scale.set(6.4, 1.6, 1);
     }

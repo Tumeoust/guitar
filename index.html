@@ -42,6 +42,9 @@
       <label class="field">Song
         <select id="song-select"></select>
       </label>
+      <label class="field" title="Put a capo on this fret to play further down the neck. Lessons, drills and songs without their own capo use it; Cinnamon Girl and I See Fire keep theirs.">Capo
+        <select class="capo-select"></select>
+      </label>
       <div class="row">
         <button id="play" class="primary">▶ Play</button>
         <button id="restart">⟲ Restart</button>
@@ -192,6 +195,8 @@
         <h2>Pick a song</h2>
       </div>
       <div id="song-list" class="pick-list" role="listbox" aria-label="Songs"></div>
+      <label class="capo-row" title="Put a capo on this fret to play further down the neck. Lessons, drills and songs without their own capo use it; Cinnamon Girl and I See Fire keep theirs.">Capo <select class="capo-select"></select>
+        <span class="small muted">for songs without their own capo</span></label>
       <div class="field">Practice speed
         <div class="row speeds">
           <button data-speed="25">25%</button>
@@ -212,6 +217,9 @@
       </div>
       <p class="muted small">Lessons listen to your guitar through the microphone to check each chord.
         The browser asks for permission the first time.</p>
+      <label class="capo-row" title="Put a capo on this fret to play further down the neck. Lessons, drills and songs without their own capo use it; Cinnamon Girl and I See Fire keep theirs.">Capo <select class="capo-select"></select>
+        <span class="small muted">Play the same shapes from a capo, further down the neck. The dots and fret numbers
+          count from the capo.</span></label>
       <button id="lesson-continue" class="primary big"></button>
       <div id="lesson-list" class="pick-list" role="list" aria-label="Lessons"></div>
     </div>

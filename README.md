@@ -56,12 +56,21 @@ When a song ends, the results screen offers *Play again*, the next lesson after 
 list. *Exit* in a lesson goes back to the lesson list. **⌂ Menu** in the settings, or Esc while paused, returns
 to the start screen.
 
-Settings (practice speed, play-along sound, metronome, loop, look-ahead, mic delay) are remembered between
+Settings (practice speed, capo, play-along sound, metronome, loop, look-ahead, mic delay) are remembered between
 visits. The "In time" drills switch the metronome on and play at 100 %, and your own settings come back when
 you leave the drill. Below 100 %, the HUD shows the speed next to the song title.
 
 If the microphone can't be opened, the app says why in plain words (blocked, not found, in use by another app)
 instead of failing silently. A lesson then still shows its chord and offers *Try again*.
+
+## Playing further down the neck with a capo
+
+Playing in first position, right by the headstock, can be hard on the wrist. The **Capo** setting (in the lesson
+list, the song list and the settings panel) moves lessons, drills and songs without their own capo further down
+the neck: put a capo on the chosen fret and play the same shapes from it. The neck shows the capo bar on that fret
+with the shapes above it, the fret numbers count from the capo (so the lesson tips still match), and the camera
+frames that part of the neck. Everything sounds higher, and the microphone check and play-along sound follow.
+Songs that need a capo to be in key (Cinnamon Girl, I See Fire) keep their own. The setting is remembered.
 
 ## Magnifier
 
@@ -165,9 +174,13 @@ The settings panel folds away while a song plays, and comes back when you pause.
   pattern, no melody or lyrics.
 - One (Metallica): the clean intro simplified to Bm – G – D, with an easy four-string Bm (no barre). Only the
   chords and a strum pattern, no melody or lyrics.
+- I See Fire (Ed Sheeran): the version with a capo on the 6th fret, using the Em, C, D, G and Am shapes. Intro, verses,
+  choruses and bridge, one chord per bar, with G/B played as G. Only the chords and a strum pattern, no melody or
+  lyrics.
 
-A song can set `capo`. The dots and fret numbers then count from the capo, the way chord sheets write it,
-and the play-along sound and the microphone check use the pitches the capo gives. The HUD shows a *Capo* badge.
+A song can set `capo`. The neck then shows a capo bar on that fret and draws the shapes above it, the fret numbers
+count from the capo the way chord sheets write it, and the play-along sound and the microphone check use the
+pitches the capo gives. The HUD shows a *Capo* badge.
 
 To add a song, edit `js/songs.js`. Songs are built from chord progressions with strum patterns, from note lists,
 or from arpeggio patterns. The `CHORDS` table defines frets and fingers per string, from low E to high e.
