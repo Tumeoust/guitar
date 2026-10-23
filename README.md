@@ -59,7 +59,7 @@ strings ring open, and which not to play. The setting is remembered.
 
 ## Chord lessons
 
-The lessons teach one chord at a time with no time pressure (Em, Am, E, A, D, C, G and Dm), then build up the
+The lessons teach one chord at a time with no time pressure (Em, Am, E, A, D, C, G, Dm and Bm), then build up the
 changes between them in three steps, grouped by the song they lead to:
 
 1. **Changing X ↔ Y**: change at your own pace. The lesson waits until it hears each chord right.
@@ -149,6 +149,8 @@ The settings panel folds away while a song plays, and comes back when you pause.
 - House of the Rising Sun (traditional): fingerpicked arpeggios in 6/8.
 - Cinnamon Girl (Lana Del Rey): the C – Em – D – Am loop with a capo on the 2nd fret. Only the chords and a strum
   pattern, no melody or lyrics.
+- One (Metallica): the clean intro simplified to Bm – G – D, with an easy four-string Bm (no barre). Only the
+  chords and a strum pattern, no melody or lyrics.
 
 A song can set `capo`. The dots and fret numbers then count from the capo, the way chord sheets write it,
 and the play-along sound and the microphone check use the pitches the capo gives. The HUD shows a *Capo* badge.

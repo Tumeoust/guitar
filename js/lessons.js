@@ -25,6 +25,8 @@ export const LESSONS = [
     tip: 'Middle on the low E at the 3rd fret, index on the A string at the 2nd, ring on the high e at the 3rd. Strum all six strings.' },
   { group: 'Single chords', title: 'Dm — D minor', chords: ['Dm'], reps: 3,
     tip: 'Index on the high e at the 1st fret, middle on the G string at the 2nd, ring on the B string at the 3rd. Strum the four thinnest strings.' },
+  { group: 'Single chords', title: 'Bm — B minor', chords: ['Bm'], reps: 3,
+    tip: 'The easy Bm, no barre: index on the high e at the 2nd fret, middle on the B string at the 3rd, ring on the D string and pinky on the G string at the 4th. Strum the four thinnest strings.' },
 
   { group: 'Em and Am (Two-Chord Strum)', title: 'Changing Em ↔ Am', chords: ['Em', 'Am', 'Em', 'Am', 'Em', 'Am'], reps: 1,
     tip: 'Same shape for middle and ring finger — just move it one string over, and add your index for Am.' },
@@ -63,6 +65,15 @@ export const LESSONS = [
     tip: `${SLOW}Am → C is the easy one: index and middle stay put, only the ring finger moves.` },
   { group: 'C, Em, D and Am (Cinnamon Girl)', title: 'In time: C – Em – D – Am', kind: 'song', song: 'drill-cinnamon',
     tip: 'The loop of Cinnamon Girl. After this, try the song itself — with a capo on the 2nd fret.' },
+
+  { group: 'Bm, G and D (One)', title: 'Changing Bm ↔ G', chords: ['Bm', 'G', 'Bm', 'G', 'Bm', 'G'], reps: 1,
+    tip: 'Bm → G: the whole hand moves down the neck. Lift all four fingers, then land middle on the low E, index on the A string and ring on the high e. Strum all six strings for G, only four for Bm.' },
+  { group: 'Bm, G and D (One)', title: 'Changing Bm → D → G', chords: ['Bm', 'D', 'G', 'Bm', 'D', 'G', 'Bm'], reps: 1,
+    tip: 'Bm → D: move the hand two frets towards the headstock and make the small D triangle — index to the G string at the 2nd fret, ring to the B string at the 3rd, middle to the high e at the 2nd.' },
+  { group: 'Bm, G and D (One)', title: 'Quick changes Bm ↔ G', kind: 'race', chords: ['Bm', 'G'], targets: [3, 2, 1.5], per: 4,
+    tip: `${SLOW}Keep your thumb behind the neck and move your arm, not just your fingers.` },
+  { group: 'Bm, G and D (One)', title: 'In time: Bm ↔ G', kind: 'song', song: 'drill-bm-g',
+    tip: 'The main change of One. After this, try the song itself.' },
 
   { group: 'Am, E, A and D', title: 'Changing Am ↔ E', chords: ['Am', 'E', 'Am', 'E', 'Am', 'E'], reps: 1,
     tip: 'Am and E are the same shape, one string apart. Move all three fingers together.' },
