@@ -307,16 +307,20 @@ body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: non
   #panel.open ~ #rotate-hint { display: none; }
 }
 
-/* On narrow screens the lesson and practice boxes take the whole bottom edge, so the HUD goes to the top. */
 @media (max-width: 900px) {
-  #hud { top: 12px; bottom: auto; width: auto; right: 70px; }
   #panel.open { left: 12px; width: auto; bottom: 12px; }
+}
+
+/* On narrow (portrait) screens the lesson and practice boxes take the whole bottom edge, so the HUD goes
+   to the top. */
+@media (max-width: 700px) {
+  #hud { top: 12px; bottom: auto; width: auto; right: 70px; }
   #zoom { top: 130px; width: min(70vw, 520px); }
 }
 
 @media (max-height: 500px) {
   #lesson p { display: none; }
-  #hud { padding: 6px 12px 12px; gap: 2px 12px; }
+  #hud { padding: 6px 12px 12px; gap: 2px 12px; width: min(300px, calc(100% - 24px)); }
   #song-sub { display: none; }
   #chord-now { font-size: 20px; }
   #countin { font-size: 16px; }

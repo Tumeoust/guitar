@@ -869,44 +869,40 @@ function renderZoom(dt) {
 
 // ---- Highway view ------------------------------------------------------------
 // One camera looking up the neck from the body, like the note highway in Guitar Hero: the nut at the
-// top and the low E on the left, the way chord charts draw it. It follows the fretting hand, and below
-// the hand the strums and picks fall down the strum lane to the white line.
-const neckCam = new THREE.PerspectiveCamera(24, 2, 0.5, 400);
-
-// Point a camera along the strings, towards the headstock (dir = -1) or the bridge (dir = 1), tilted
-// down by `tilt`, and place it so that the points (near, y) and (far, y) land at the picture heights
-// nearY and farY (-1 = bottom edge, 1 = top edge). It backs off if the picture is too narrow for
-// halfWidth either side of z.
-function frameAlong(cam, { dir, near, far, y, z, tilt, nearY, farY, halfWidth }) {
-  const t = Math.tan(THREE.MathUtils.degToRad(cam.fov / 2));
-  const c = Math.cos(tilt), s = Math.sin(tilt);
-  // u runs along the view direction. A point is at picture height n when its offset from the
-  // camera is perpendicular to (a, b).
-  const a1 = s - nearY * t * c, b1 = c + nearY * t * s;
-  const a2 = s - farY * t * c, b2 = c + farY * t * s;
-  const r1 = a1 * dir * near + b1 * y, r2 = a2 * dir * far + b2 * y;
-  const det = a1 * b2 - a2 * b1;
-  let pu = (r1 * b2 - r2 * b1) / det, py = (a1 * r2 - a2 * r1) / det;
-  const depth = (dir * near - pu) * c - (y - py) * s;
-  const back = Math.max(0, halfWidth / (t * cam.aspect) - depth);
-  pu -= back * c;
-  py += back * s;
-  cam.position.set(dir * pu, py, z);
-  cam.lookAt(dir * (pu + c), py - s, z);
-}
+// top and the low E on the left, the way chord charts draw it. Below the first frets the strums and
+// picks fall down the strum lane to the white line. The camera stays put, and it is orthographic, so
+// notes keep their size all the way down instead of zooming towards you.
+const neckCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 600);
+const NECK_TILT = 1.05; // radians below the horizon
+const NECK_TOP_X = -2.4; // just above the open / muted markers at the nut
+const NECK_UP = new THREE.Vector3(-Math.sin(NECK_TILT), Math.cos(NECK_TILT), 0);
+const NECK_FORWARD = new THREE.Vector3(-Math.cos(NECK_TILT), -Math.sin(NECK_TILT), 0);
+const neckCenter = new THREE.Vector3();
 
 function renderHighway() {
   const w = window.innerWidth, h = window.innerHeight;
-  // From the nut side of the hand at the top to just past the white line at the bottom. In a chord
-  // lesson the white line stays above the lesson box when the box reaches across the middle.
+  // From the nut at the top to just past the white line at the bottom. The nut stays below the HUD
+  // when narrow screens put it at the top, and in a chord lesson the white line stays above the lesson
+  // box when the box reaches across the middle.
+  const hud = $('hud').getBoundingClientRect();
+  const hudBottom = hud.top < h / 2 ? hud.bottom : 0;
   const box = $('lesson').getBoundingClientRect();
   const boxTop = (lesson || noMicView) && box.left < w / 2 + 160 ? box.top : h;
-  neckCam.aspect = w / h;
+  const heightOf = (x) => NECK_UP.x * x + NECK_UP.y * STRING_Y; // up the picture, in world units
+  const top = heightOf(NECK_TOP_X), bottom = heightOf(cues.lane.to + 1.2);
+  const topY = Math.min(0.9, 1 - (2 * (hudBottom + 8)) / h), bottomY = Math.max(-0.9, 1 - (2 * (boxTop - 16)) / h);
+  // Half the picture's height; wide enough across for the neck and its labels on narrow screens.
+  const half = Math.max((top - bottom) / (topY - bottomY), 7.5 / (w / h));
+  neckCam.left = (-half * w) / h;
+  neckCam.right = (half * w) / h;
+  neckCam.top = half;
+  neckCam.bottom = -half;
   neckCam.updateProjectionMatrix();
-  frameAlong(neckCam, {
-    dir: -1, near: cues.lane.to + 1.2, far: cues.hand.x0, y: STRING_Y, z: -0.6, tilt: 0.85,
-    nearY: Math.max(-0.88, 1 - (2 * (boxTop - 16)) / h), farY: 0.86, halfWidth: 7,
-  });
+  // Aim at the point that puts the nut at topY; across, a little towards the chord names on the right.
+  neckCenter.copy(NECK_UP).multiplyScalar(top - topY * half).setZ(-0.6);
+  neckCam.up.copy(NECK_UP);
+  neckCam.position.copy(neckCenter).addScaledVector(NECK_FORWARD, -200);
+  neckCam.lookAt(neckCenter);
   renderer.render(scene, neckCam);
 }
 
