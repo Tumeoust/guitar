@@ -19,11 +19,6 @@ html, body {
 }
 
 #view { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-/* Highway view: line between the neck camera (top) and the strumming lane (bottom). */
-#split { position: fixed; left: 0; right: 0; height: 2px; background: rgba(255, 255, 255, 0.22); pointer-events: none; }
-#split[hidden] { display: none; }
-/* The strumming lane runs up the middle of the highway view: keep the practice box beside it. */
-body.highway #practice { left: auto; right: 16px; transform: none; width: min(360px, calc(100% - 32px)); }
 
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
@@ -43,16 +38,16 @@ button.primary:hover { filter: brightness(1.1); }
 button.big { font-size: 18px; padding: 10px 36px; }
 button.icon { padding: 4px 10px; }
 
-/* HUD */
+/* HUD: a small box in the bottom-left corner, out of the way of the neck in the middle. */
 #hud {
-  position: fixed; top: 12px; left: 12px; right: 70px;
-  display: flex; align-items: center; gap: 28px;
-  padding: 10px 16px 14px;
+  position: fixed; left: 12px; bottom: 12px; width: min(340px, calc(100% - 24px));
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 6px 12px;
+  padding: 10px 14px 16px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
   backdrop-filter: blur(6px);
 }
-#hud .song { min-width: 0; flex: 1; }
-#song-title { font-weight: 700; font-size: 16px; }
+#hud .song { grid-column: 1 / -1; min-width: 0; }
+#song-title { font-weight: 700; font-size: 15px; }
 #capo {
   margin-left: 6px; padding: 1px 8px; border-radius: 6px; vertical-align: 2px;
   background: #ffd166; color: #0b0d12; font-size: 12px; font-weight: 800;
@@ -63,21 +58,23 @@ button.icon { padding: 4px 10px; }
   background: var(--accent); color: #06121a; font-size: 12px; font-weight: 800;
 }
 #countdown-capo { color: #ffd166; font-weight: 700; }
-#song-sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#hud .chords { display: flex; gap: 22px; font-size: 16px; }
-#chord-now { font-size: 28px; color: #fff; white-space: nowrap; }
-#chord-next { font-size: 18px; color: var(--muted); white-space: nowrap; }
-#hud .pos { text-align: right; min-width: 120px; }
-#countin { font-size: 22px; font-weight: 800; color: var(--accent); min-height: 1em; }
+#song-sub {
+  font-size: 12px; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+#hud .chords { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 14px; font-size: 13px; }
+#chord-now { font-size: 24px; color: #fff; white-space: nowrap; }
+#chord-next { font-size: 16px; color: var(--muted); white-space: nowrap; }
+#hud .pos { text-align: right; font-size: 12px; white-space: nowrap; }
+#countin { font-size: 18px; font-weight: 800; color: var(--accent); }
 #progress {
-  position: absolute; left: 16px; right: 16px; bottom: 5px; height: 4px;
+  position: absolute; left: 14px; right: 14px; bottom: 6px; height: 4px;
   background: rgba(255, 255, 255, 0.1); border-radius: 2px; cursor: pointer;
 }
 #progress::before { content: ""; position: absolute; inset: -6px 0; }
 #progress-fill { height: 100%; width: 0; background: var(--accent); border-radius: 2px; }
 
 /* Settings panel */
-body:has(#panel.open) #hud { right: 312px; }
 
 #panel {
   position: fixed; top: 12px; right: 12px; bottom: 12px; width: 288px;
@@ -133,7 +130,7 @@ input[type=range] { accent-color: var(--accent); }
 .stats b { text-align: right; }
 
 /* Magnified neck: the 3D view draws the close-up into #zoom-view's box. */
-#zoom { display: none; position: fixed; left: 12px; top: 96px; width: min(50vw, 600px); pointer-events: none; }
+#zoom { display: none; position: fixed; left: 12px; top: 12px; width: min(40vw, 520px); pointer-events: none; }
 body.magnify #zoom { display: block; }
 #zoom-view {
   position: relative; aspect-ratio: 2.4; max-height: 40vh;
@@ -151,25 +148,26 @@ body.playing #zoom-fab { right: 20px; }
 body:has(#panel.open) #zoom-fab, body.magnify #zoom-fab { display: none; }
 #results-next { margin-top: 12px; }
 
-/* Legend */
-#legend {
-  position: fixed; left: 12px; bottom: 12px;
-  padding: 10px 14px; font-size: 12px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
-  display: grid; grid-template-columns: repeat(2, auto); gap: 4px 18px;
+/* Legend on the "How to read the screen" page */
+.legend { display: grid; grid-template-columns: repeat(2, auto); gap: 6px 18px; overflow-y: auto; }
+.legend-title {
+  grid-column: 1 / -1; font-weight: 700; color: var(--muted); text-transform: uppercase;
+  letter-spacing: .06em; font-size: 11px; margin-top: 10px;
 }
-.legend-title { grid-column: 1 / -1; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; margin-top: 2px; }
-.legend-row { display: flex; align-items: center; gap: 6px; }
+.legend-title:first-child { margin-top: 0; }
+.legend-row { display: flex; align-items: center; gap: 8px; }
+.legend-note, .legend-keys { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
 .dot {
-  width: 18px; height: 18px; border-radius: 50%;
-  background: var(--c); color: #0b0d12; font-weight: 800; font-size: 11px;
-  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto;
+  background: var(--c); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(10, 12, 18, 0.85);
+  display: inline-flex;
 }
 .sym { width: 18px; text-align: center; font-weight: 800; }
 .sym.ring { color: #ddd; }
 .sym.x { color: #e8ebf2; }
 .sym.gem { color: #ffffff; }
-.legend-note { grid-column: 1 / -1; color: var(--muted); max-width: 260px; }
+.sym.strum { color: #ffffff; font-size: 18px; line-height: 1; }
+.sym.strum.up { color: #aab4c8; }
 
 /* Hit feedback */
 #feedback {
@@ -188,10 +186,10 @@ body:has(#panel.open) #zoom-fab, body.magnify #zoom-fab { display: none; }
   100% { transform: translateY(-40px) scale(1); opacity: 0; }
 }
 
-/* Lesson and practice boxes */
+/* Lesson and practice boxes, in the bottom-right corner: the neck runs down the middle. */
 #lesson, #practice {
-  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
-  width: min(520px, calc(100% - 32px));
+  position: fixed; right: 16px; bottom: 16px;
+  width: min(480px, calc(100% - 32px));
   padding: 14px 16px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
   backdrop-filter: blur(6px);
@@ -233,7 +231,6 @@ body.lesson-mode #progress[title] { pointer-events: none; }
 .lesson-mic label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .lesson-mic input { width: 110px; }
 #lesson-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
-@media (max-width: 1250px) { body.lesson-mode #legend { display: none; } }
 body.lesson-mode .chords > div:nth-child(2) { display: none; }
 body.lesson-mode.race .chords > div:nth-child(2) { display: block; }
 .start-row { justify-content: center; margin-top: 8px; }
@@ -296,7 +293,7 @@ button.link:hover { color: var(--text); background: none; }
 .pick-item.on { border-color: var(--accent); background: rgba(76, 201, 240, 0.14); }
 
 /* On the start screen and in the pickers, only the guitar stays in the background. */
-body.menu #hud, body.menu #panel, body.menu #legend, body.menu #zoom, body.menu #zoom-fab,
+body.menu #hud, body.menu #panel, body.menu #zoom, body.menu #zoom-fab,
 body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: none !important; }
 
 #rotate-hint { display: none; }
@@ -309,30 +306,30 @@ body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: non
   #panel.open ~ #rotate-hint { display: none; }
 }
 
+/* On narrow screens the lesson and practice boxes take the whole bottom edge, so the HUD goes to the top. */
 @media (max-width: 900px) {
-  #hud { gap: 14px; flex-wrap: wrap; }
-  #hud .song { flex-basis: 100%; }
-  body:has(#panel.open) #hud { right: 70px; }
+  #hud { top: 12px; bottom: auto; width: auto; right: 70px; }
   #panel.open { left: 12px; width: auto; bottom: 12px; }
-  #legend { display: none; }
-  #zoom { top: 140px; width: min(70vw, 520px); }
+  #zoom { top: 130px; width: min(70vw, 520px); }
 }
 
 @media (max-height: 500px) {
   #lesson p { display: none; }
-  #hud { flex-wrap: nowrap; padding: 6px 12px 10px; gap: 14px; }
-  #hud .song { flex-basis: auto; }
-  #song-sub, #legend { display: none; }
+  #hud { padding: 6px 12px 12px; gap: 2px 12px; }
+  #song-sub { display: none; }
   #chord-now { font-size: 20px; }
   #countin { font-size: 16px; }
   #panel.open { top: 12px; max-height: none; }
-  #zoom { top: 66px; width: min(55vw, 480px); }
+  #zoom { top: 12px; width: min(45vw, 420px); }
   #zoom-view { max-height: 46vh; }
 }
 
 /* Tuner */
 #screen-tuner { width: min(520px, 100%); }
-#start-tuner { margin-top: 14px; }
+#start-tuner, #start-help { margin-top: 14px; }
+.link-row { justify-content: center; gap: 18px; }
+.link-row button { flex: 0 1 auto; }
+#screen-help { width: min(620px, 100%); }
 #tuner-open { margin: 0 0 0 6px; padding: 0; font-size: 12px; text-decoration: underline; }
 .tuner-strings { display: flex; gap: 6px; }
 .tuner-strings button {

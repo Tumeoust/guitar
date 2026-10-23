@@ -16,7 +16,6 @@
 </head>
 <body>
   <canvas id="view"></canvas>
-  <div id="split" hidden></div>
 
   <header id="hud">
     <div class="song">
@@ -65,7 +64,7 @@
       <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
       <div class="field">Camera
         <div class="row views">
-          <button id="view-highway" title="Guitar Hero style: the neck on top, the strumming lane below">Highway</button>
+          <button id="view-highway" title="Guitar Hero style: looking up the neck, with strums falling down to the white line">Highway</button>
           <button id="view-player" title="The whole guitar, the way you see your own">Player</button>
           <button id="view-top">Top</button>
         </div>
@@ -90,21 +89,6 @@
   </aside>
 
   <div id="rotate-hint">Turn your phone sideways for a bigger guitar.</div>
-
-  <div id="legend">
-    <div class="legend-title">Left hand</div>
-    <div class="legend-row"><span class="dot" style="--c:#22d34b">1</span>index</div>
-    <div class="legend-row"><span class="dot" style="--c:#ff3640">2</span>middle</div>
-    <div class="legend-row"><span class="dot" style="--c:#ffd31a">3</span>ring</div>
-    <div class="legend-row"><span class="dot" style="--c:#2a8cff">4</span>pinky</div>
-    <div class="legend-row"><span class="sym ring">○</span>open string (white)</div>
-    <div class="legend-row"><span class="sym x">✕</span>don't play</div>
-    <div class="legend-title">Right hand</div>
-    <div class="legend-row"><span class="sym" style="color:#ffffff">➜</span>strum down (thick → thin)</div>
-    <div class="legend-row"><span class="sym" style="color:#aab4c8">➜</span>strum up (thin → thick)</div>
-    <div class="legend-row"><span class="sym gem">●</span>pick that string</div>
-    <div class="legend-note">Finger colours as on a Guitar Hero 3 neck: green, red, yellow, blue.</div>
-  </div>
 
   <div id="feedback"></div>
   <div id="toast" role="status" hidden></div>
@@ -153,21 +137,50 @@
   <div id="overlay">
     <div class="card" id="screen-home">
       <h1>Fretview</h1>
-      <p>Play along on a real guitar. Like Guitar Hero, the screen looks along the strings: the neck on top, following
-        your fretting hand, and the strumming lane below. <i>Player</i> view in the settings shows the whole guitar the way
-        you see your own.</p>
+      <p>Play along on a real guitar, Guitar Hero style. Coloured dots on the neck show where your fingers go,
+        and strums fall down to the white line.</p>
       <ul>
         <li><b>Chord lessons:</b> learn one chord at a time. The microphone listens and tells you when it sounds right, or which string needs fixing.
           Then practise changing between them: at your own pace, against the clock, and finally in time with a metronome.</li>
-        <li><b>Left hand:</b> coloured dots on the fretboard show which finger goes where, in Guitar Hero colours: green, red, yellow, blue. The next shape fades in with a shrinking ring.</li>
-        <li><b>Right hand:</b> arrows and dots come down the lane towards the white line over the soundhole. Strum or pick when they reach it.</li>
+        <li><b>Play songs:</b> play along at full speed, or slower and the song waits until you get each chord right.</li>
       </ul>
-      <p class="muted small keys">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar · M = magnify the neck · drag to move the camera (Player view)</p>
       <div class="row start-row">
         <button id="start-lessons" class="primary big">🎓 Chord lessons</button>
         <button id="start" class="big">♫ Play songs</button>
       </div>
-      <button id="start-tuner" class="link">🎵 Tune your guitar first</button>
+      <div class="row link-row">
+        <button id="start-help" class="link">📖 How to read the screen</button>
+        <button id="start-tuner" class="link">🎵 Tune your guitar first</button>
+      </div>
+    </div>
+
+    <div class="card wide" id="screen-help" hidden>
+      <div class="card-head">
+        <button class="back" title="Back (Esc)">← Back</button>
+        <h2>How to read the screen</h2>
+      </div>
+      <p>The camera looks up the neck from the body, like the note highway in Guitar Hero. The nut is at the top
+        and the strings run E A D G B e from left to right, the way chord charts draw them.</p>
+      <div class="legend">
+        <div class="legend-title">Left hand: where the fingers go</div>
+        <div class="legend-row"><span class="dot" style="--c:#22d34b"></span>index finger</div>
+        <div class="legend-row"><span class="dot" style="--c:#ff3640"></span>middle finger</div>
+        <div class="legend-row"><span class="dot" style="--c:#ffd31a"></span>ring finger</div>
+        <div class="legend-row"><span class="dot" style="--c:#2a8cff"></span>pinky</div>
+        <div class="legend-row"><span class="sym ring">○</span>at the nut: play the string open</div>
+        <div class="legend-row"><span class="sym x">✕</span>at the nut: don't play the string</div>
+        <div class="legend-note">The colours are the fret buttons of Guitar Hero 3: green, red, yellow, blue. The next chord
+          fades in early with a shrinking ring, and dashed lines show where each finger moves.</div>
+        <div class="legend-title">Right hand: when to strum or pick</div>
+        <div class="legend-row"><span class="sym strum">↓</span>strum down, thick → thin strings</div>
+        <div class="legend-row"><span class="sym strum up">↑</span>strum up, thin → thick strings</div>
+        <div class="legend-row"><span class="sym gem">●</span>pick that string (finger colour, white = open)</div>
+        <div class="legend-note">Strums and picks fall down the lane below your hand. A strum is a bar across the strings
+          to hit. Strum or pick when it reaches the white line.</div>
+        <div class="legend-title">Keys</div>
+        <div class="legend-keys">Space = play / pause · Esc = pause / back · R = restart · ← / → = jump a bar ·
+          M = magnify the neck · drag to move the camera (Player and Top view)</div>
+      </div>
     </div>
 
     <div class="card wide" id="screen-songs" hidden>

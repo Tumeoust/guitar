@@ -23,22 +23,54 @@ function centeredText(g, text, x, y, size, color) {
   g.fillText(text, x, y + size * 0.06);
 }
 
-// Filled disc with a finger number on it, with a white rim like a Guitar Hero gem.
-export function discTexture(color, text) {
-  return canvasTexture(`disc:${color}:${text}`, (g, s) => {
+// A finger dot: a coloured gem with a white rim, like the notes in Guitar Hero.
+export function discTexture(color) {
+  return canvasTexture(`disc:${color}`, (g, s) => {
+    const c = s / 2;
     g.beginPath();
-    g.arc(s / 2, s / 2, s / 2 - 6, 0, Math.PI * 2);
+    g.arc(c, c, c - 6, 0, Math.PI * 2);
     g.fillStyle = color;
     g.fill();
     g.lineWidth = 7;
     g.strokeStyle = 'rgba(10,12,18,0.85)';
     g.stroke();
     g.beginPath();
-    g.arc(s / 2, s / 2, s / 2 - 14, 0, Math.PI * 2);
-    g.lineWidth = 6;
-    g.strokeStyle = 'rgba(255,255,255,0.9)';
+    g.arc(c, c, c - 14, 0, Math.PI * 2);
+    g.lineWidth = 7;
+    g.strokeStyle = 'rgba(255,255,255,0.95)';
     g.stroke();
-    centeredText(g, text, s / 2, s / 2, 70, '#0b0d12');
+    const shine = g.createRadialGradient(c - 14, c - 16, 2, c - 14, c - 16, c * 0.7);
+    shine.addColorStop(0, 'rgba(255,255,255,0.6)');
+    shine.addColorStop(1, 'rgba(255,255,255,0)');
+    g.beginPath();
+    g.arc(c, c, c - 18, 0, Math.PI * 2);
+    g.fillStyle = shine;
+    g.fill();
+  });
+}
+
+// Strum direction as strum charts write it: ↓ = down (thick to thin strings), ↑ = up.
+export function strumTexture(dir, color) {
+  return canvasTexture(`strum:${dir}:${color}`, (g, s) => {
+    if (dir === 'U') {
+      g.translate(s, s);
+      g.rotate(Math.PI);
+    }
+    g.beginPath();
+    g.moveTo(s * 0.41, s * 0.1);
+    g.lineTo(s * 0.59, s * 0.1);
+    g.lineTo(s * 0.59, s * 0.5);
+    g.lineTo(s * 0.8, s * 0.5);
+    g.lineTo(s * 0.5, s * 0.9);
+    g.lineTo(s * 0.2, s * 0.5);
+    g.lineTo(s * 0.41, s * 0.5);
+    g.closePath();
+    g.lineJoin = 'round';
+    g.lineWidth = 10;
+    g.strokeStyle = 'rgba(10,12,18,0.9)';
+    g.stroke();
+    g.fillStyle = color;
+    g.fill();
   });
 }
 
