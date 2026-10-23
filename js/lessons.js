@@ -121,7 +121,6 @@ export class LessonRunner {
     this.lastOnset = Infinity; // set on the first update
     this.ignoreUntil = 0;
     this.advanceAt = null;
-    this.mic.expect(this.shape.frets);
   }
 
   chordAt(k) { return this.race ? this.lesson.chords[k % this.lesson.chords.length] : this.steps[k]; }
@@ -150,7 +149,6 @@ export class LessonRunner {
       return;
     }
     this.index++;
-    this.mic.expect(this.shape.frets);
     this.ui.onStep(this);
   }
 
@@ -233,7 +231,7 @@ export function chordFeedback(shape, result) {
     }
     return `The ${STRING_NAMES[s]} string isn't ringing clearly. Press it firmly with your ${FINGER_NAMES[fingers[s]] || 'finger'}, just behind the fret, using your fingertip.`;
   }
-  if (result.rival && result.rivalSim > result.sim) {
+  if (result.rivalWins) {
     return `That sounded more like ${result.rival}. Check each finger against the dots.`;
   }
   return 'Not quite — check the finger positions and strum again.';

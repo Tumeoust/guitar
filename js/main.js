@@ -527,7 +527,6 @@ function exitLesson() {
   if (!document.body.classList.contains('lesson-mode')) return;
   lesson = null;
   noMicView = null;
-  mic?.expect(null);
   document.body.classList.remove('lesson-mode', 'race');
   $('lesson').hidden = true;
   setView(viewChoice);
@@ -649,7 +648,6 @@ function startWait(ev, t) {
   // Let the clock run on for a little while, but never past the next wait point.
   const next = state.song.right.find((e) => e.wait && e.beat > ev.beat);
   state.waitCap = Math.min(ev.beat + graceSec(ev) * beatsPerSec(), next ? next.beat : Infinity);
-  mic.expect(ev.kind === 'strum' ? ev.frets : null);
   setPracticeStatus(waitPrompt(ev));
 }
 
