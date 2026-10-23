@@ -11,18 +11,21 @@ remembered. There is no sheet music and there are no note names. The game only s
 - **Left hand.** Coloured gems on the fretboard show which finger goes where, in the fret-button colours of
   Guitar Hero 3: index green, middle red, ring yellow, pinky blue.
   ○ at the nut means play the string open, and ✕ at the nut means don't play it.
-  Fret numbers 1–5 are written along the low E side. Fingers that sit side by side on one fret are staggered so their dots don't overlap.
+  Each dot sits just behind its fret wire, where the fingertip presses, so fingers on the same fret line up in a
+  row. Fret numbers are written along the low E side.
   Colour always means a finger: a picking cue has the colour of the finger fretting its string, or white when the
   string is open.
-  The next shape fades in early with a shrinking ring. Dashed lines show where each finger travels to.
-  As soon as the last strum of a chord has gone past the line, the neck already shows the next chord, so your
-  fingers can move before its first strum arrives. Below 100 % speed, a chord the game is still waiting for
-  stays on the neck until it has been played right.
+  Filled dots are the chord to hold; the next chord shows as hollow rings in the same finger colours, and a ring
+  round a filled dot means that finger stays put. As soon as the last strum of a chord has gone past the line, the
+  next chord fills in, so your fingers can move before its first strum arrives; the *Now* and *Next* chords in the
+  info box switch at the same moment. Below 100 % speed, a chord the game is still waiting for stays on the neck
+  until it has been played right.
 - **Right hand.** Below the hand, strums and picks fall down the strum lane to the white line, like notes in
   Guitar Hero. Strum or pick when they reach it.
   - A bar across the strings: strum those strings. White with ↓: strum down (thick → thin strings).
     Grey with ↑: strum up.
   - A gem on a string: pick that string. It has the colour of the finger fretting it, or white if the string is open.
+  - The first strum of each new chord has the chord's name beside the lane, so a change can be seen coming.
 
 **📖 How to read the screen** on the start screen explains all of this, with the keys.
 

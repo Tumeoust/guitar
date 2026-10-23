@@ -37,11 +37,11 @@ export function stringZ(i, x = 0) {
   return spread / 2 - (i * spread) / 5;
 }
 
-// Where a fingertip goes for a fret: just behind the fret wire.
+// Where a fingertip presses for a fret: just behind the fret wire, the same for every string.
 export function fingerX(fret) {
   if (fret <= 0) return NUT_CUE_X;
   const a = fretX(fret - 1), b = fretX(fret);
-  return b - (b - a) * 0.32;
+  return b - Math.min(0.6, (b - a) * 0.35);
 }
 
 // Extrude a shape drawn in (x, z) downwards from y = 0.

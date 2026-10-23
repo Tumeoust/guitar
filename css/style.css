@@ -162,6 +162,7 @@ body:has(#panel.open) #zoom-fab, body.magnify #zoom-fab { display: none; }
   background: var(--c); box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.9), 0 0 0 1px rgba(10, 12, 18, 0.85);
   display: inline-flex;
 }
+.dot.ghost { background: none; box-shadow: inset 0 0 0 2px var(--c); }
 .sym { width: 18px; text-align: center; font-weight: 800; }
 .sym.ring { color: #ddd; }
 .sym.x { color: #e8ebf2; }

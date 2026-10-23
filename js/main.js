@@ -583,11 +583,8 @@ let lastHud = '';
 function updateHud(beat) {
   const song = state.song;
   const bpb = song.beatsPerBar;
-  let now = null, next = null;
-  for (const seg of song.left) {
-    if (seg.beat <= beat && beat < seg.beat + seg.dur) now = seg;
-    else if (seg.beat > beat) { next = seg; break; }
-  }
+  // The chord the neck shows, which switches to the next one once the last strum of a chord is done.
+  const now = cues.nowSeg, next = cues.nextSeg;
   const nowName = now ? now.name || describe(now.shape) : '';
   const nextName = next ? next.name || describe(next.shape) : '';
   const count = state.playing && beat < 0 ? String(bpb + Math.floor(beat) + 1) : '';
