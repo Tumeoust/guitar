@@ -324,8 +324,11 @@ function judgeEvents(now) {
     st[grade]++;
     st.streak = grade === 'perfect' || grade === 'good' ? st.streak + 1 : 0;
     st.best = Math.max(st.best, st.streak);
-    showPop(grade);
-    cues.flashJudgement(GRADES[grade].color);
+    // A miss still counts in the stats, but flashing it mid-song is just distracting.
+    if (grade !== 'miss') {
+      showPop(grade);
+      cues.flashJudgement(GRADES[grade].color);
+    }
     renderStats();
   }
 }
