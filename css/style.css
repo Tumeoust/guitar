@@ -385,3 +385,37 @@ body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: non
 #tuner-hint.ok { color: #3ddc84; }
 #tuner-hint.bad { color: #ffb627; }
 #tuner-level { height: 100%; width: 0; background: #3ddc84; transition: width 60ms linear; }
+
+/* Importing a song from an audio file */
+.song-actions { justify-content: center; }
+.song-actions button { flex: 0 1 auto; }
+#song-edit[hidden], #import-delete[hidden] { display: none; }
+.file-pick {
+  display: block; padding: 14px; border: 1px dashed rgba(255, 255, 255, 0.25); border-radius: 10px;
+  text-align: center; cursor: pointer; background: rgba(255, 255, 255, 0.04);
+}
+.file-pick:hover, .file-pick:focus-within { border-color: var(--accent); background: rgba(76, 201, 240, 0.08); }
+.file-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+#import-progress[hidden], #import-editor[hidden] { display: none; }
+#import-progress .meter { margin: 6px 0 0; }
+#import-progress.bad #import-status { color: #ffb627; }
+#import-level { height: 100%; width: 0; background: var(--accent); transition: width 120ms linear; }
+#import-editor { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+#import-title, #import-bpm {
+  background: rgba(255, 255, 255, 0.06); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 8px; font: inherit;
+}
+.import-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 12px; }
+.import-grid .row button { padding: 5px 0; }
+@media (max-width: 520px) { .import-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bar-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 6px;
+  overflow-y: auto; min-height: 90px; max-height: 32vh; padding-right: 4px;
+}
+.bar { display: flex; flex-direction: column; gap: 2px; padding: 4px 6px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid transparent; }
+.bar .n { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar select { width: 100%; padding: 2px 4px; }
+.bar.approx { border-color: rgba(255, 209, 102, 0.5); }
+.bar.approx .n::after { content: " ≈"; color: #ffd166; font-weight: 800; }
+.import-actions { justify-content: flex-end; }
+.import-actions button { flex: 0 1 auto; }

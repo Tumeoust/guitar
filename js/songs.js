@@ -32,6 +32,15 @@ const STRUMS = {
   ballad: [[0, 'D'], [1, 'D'], [2, 'D'], [2.5, 'U'], [3.5, 'U']],
   two: [[0, 'D'], [1, 'D']],
   three: [[0, 'D'], [1, 'D'], [2, 'D']],
+  // Hold the chord without strumming (imported songs use it for bars with no chord).
+  rest: [],
+};
+
+// The patterns an imported song can use, for each time signature.
+export const STRUM_CHOICES = {
+  4: [['whole', 'One down-strum per bar'], ['two', 'Two down-strums'], ['quarters', 'Four down-strums'],
+    ['ballad', 'D D DU U'], ['campfire', 'D DU UDU']],
+  3: [['whole', 'One down-strum per bar'], ['waltz', 'Three down-strums']],
 };
 
 function playedStrings(frets) {
@@ -54,7 +63,7 @@ export function strumEvent(shape, beat, dir) {
 }
 
 // progression: [chordName, strumPattern, bars = 1]
-function strumSong(meta, progression) {
+export function strumSong(meta, progression) {
   const bpb = meta.beatsPerBar;
   const left = [], right = [];
   let beat = 0;

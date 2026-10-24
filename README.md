@@ -127,6 +127,44 @@ An optional **microphone mode** listens to your guitar and grades each strum or 
 - For single notes, a YIN pitch detector checks the pitch.
 - For chords, a 12-bin chroma profile is compared against the expected chord.
 
+## Importing a song from an MP3
+
+*⤒ Import a song from an MP3* (on the start screen) or *⤒ Import from MP3* (in the song list) turns a recording
+into a chord chart to play along to. It works out the chords and the beat, not the exact notes or the strumming,
+and it gets some bars wrong, so check the chart before you play. Everything happens in the browser: the file is not
+uploaded anywhere, the audio is not stored, and imported charts are kept in `sessionStorage`, so they are gone
+when the browser (or tab) is closed.
+
+How it listens (`js/transcribe.js`, run in a worker by `js/transcribe-worker.js`):
+
+1. The browser decodes the file (MP3, M4A, WAV, OGG… whatever it can play) and resamples it to mono 11 025 Hz.
+2. **Beat.** A spectral-flux onset envelope gives the tempo (autocorrelation, weighted towards 120 BPM) and the
+   beats (Ellis' dynamic-programming beat tracker).
+3. **Tuning.** Where the strongest spectral peaks fall between the semitones gives how far the recording is from
+   A = 440 Hz, so a slightly sharp or flat record still reads right.
+4. **Chords.** Each beat gets a 12-bin chroma profile of the whole mix and one of the bass alone. They are matched
+   against the 24 major and minor chords (the bass mostly plays the root), and a Viterbi pass smooths the labels so
+   a melody's passing note doesn't flip the chord for a beat.
+5. **Bars.** The beats are grouped into bars where the chords change and the kick and bass hit hardest, and each
+   bar gets the chord that rings longest in it.
+6. **Capo.** The capo (0–7) that lets the most bars use the open shapes the app knows (Em, Am, E, A, D, C, G, F,
+   Dm, Bm) is chosen, so a song in B♭ comes out as G – D – Em – C with a capo on the 3rd fret. A chord no open
+   shape can play with that capo gets the closest one and is marked ≈ in the chart.
+
+The chart editor shows one chord per bar. You can pick another chord for any bar (— is a bar without a chord: the
+last chord is held without strumming), and change the title, tempo, capo and strumming pattern. If the bars look
+wrong, three settings regroup the beats and read the chords again (this undoes changes to single bars):
+
+- *Time*: 4/4 or 3/4.
+- *Beat*: if each chord seems to last twice or half as long as it should, the beat was heard at the wrong speed.
+- *Bars start* ◀ / ▶: if the chords change in the middle of the bars, move where the bars start by a beat.
+
+*Save and play* adds the song to the list under *Imported* and starts it. *✎ Edit chords* in the song list opens
+an imported song's chart again, and the editor can delete it.
+
+What it can't do yet: chords other than major and minor (7ths, sus and so on are read as the nearest major or
+minor chord), more than one chord in a bar, tempo changes within a song, and working out riffs or single notes.
+
 ## Running it
 
 It is a static site with no build step. Three.js loads from a CDN. Serve the folder with any static web server,
@@ -197,6 +235,9 @@ or from arpeggio patterns. The `CHORDS` table defines frets and fingers per stri
 | `js/mic.js`      | Microphone onset, pitch and chord detection, and grading              |
 | `js/tuner.js`    | Tuner: pitch tracking, string detection, in-tune check and chime      |
 | `js/lessons.js`  | Chord lessons and the lesson runner (listens, judges, explains)       |
+| `js/transcribe.js` | Beat, tuning and chord detection in a recording; bars, capo and shapes for the chart |
+| `js/transcribe-worker.js` | Runs `transcribe.js` off the main thread                    |
+| `js/importer.js` | Importing an audio file: decoding, the chart editor, session storage  |
 
 ## Testing microphone mode without a guitar
 

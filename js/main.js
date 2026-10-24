@@ -8,6 +8,7 @@ import { MicJudge, LESSON } from './mic.js';
 import { midiName, setCapo } from './music.js';
 import { LESSONS, LessonRunner, CANDIDATES, chordFeedback, stringName } from './lessons.js';
 import { Tuner, TUNER_STRINGS, chime } from './tuner.js';
+import { Importer, loadCharts, saveCharts, chartToSong } from './importer.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -716,7 +717,7 @@ function showScreen(name) {
   if (document.body.classList.contains('lesson-mode')) exitLesson();
   if (name !== 'tuner') tuner?.stop();
   screen = name;
-  for (const n of ['home', 'songs', 'lessons', 'tuner', 'help', 'results']) $(`screen-${n}`).hidden = n !== name;
+  for (const n of ['home', 'songs', 'lessons', 'tuner', 'help', 'results', 'import']) $(`screen-${n}`).hidden = n !== name;
   $('overlay').hidden = false;
   document.body.classList.add('menu');
   if (name === 'songs') {
@@ -743,6 +744,7 @@ function hideMenu() {
 // Esc and the ← Back buttons go one level up.
 function menuBack() {
   if (screen === 'results') showScreen(state.lessonSong == null ? 'songs' : 'lessons');
+  else if (screen === 'import') showScreen(importFrom);
   else if (screen !== 'home') showScreen('home');
 }
 
@@ -771,7 +773,7 @@ function pickItem(html, className = '') {
 }
 
 const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const songGroup = (song) => (song.drill ? 'Chord-change drills' : 'Songs');
+const songGroup = (song) => (song.imported ? 'Imported (until you close the browser)' : song.drill ? 'Chord-change drills' : 'Songs');
 
 function renderSongList() {
   fillList($('song-list'), SONGS, songGroup, (song, i) => {
@@ -785,6 +787,7 @@ function renderSongList() {
     return el;
   });
   $('song-go').textContent = `▶ Play ${state.song.title}`;
+  $('song-edit').hidden = !state.song.imported;
   $('song-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' });
 }
 
@@ -833,6 +836,43 @@ function renderLessonList() {
     : `${lessonsDone.size ? 'Continue' : 'Start'} with ${next + 1}. ${LESSONS[next].title} →`;
   $('lesson-list').querySelector('.on')?.scrollIntoView({ block: 'nearest' });
 }
+
+// ---- Importing songs from audio files --------------------------------------
+// Imported charts live in sessionStorage; their songs go at the end of SONGS.
+const charts = loadCharts();
+for (const chart of charts) SONGS.push(chartToSong(chart));
+let importFrom = 'home'; // the screen ← Back returns to
+
+function openImport(chart) {
+  importFrom = screen === 'songs' ? 'songs' : 'home';
+  showScreen('import');
+  importer.open(chart && structuredClone(chart));
+}
+
+const importer = new Importer({
+  onSave(chart) {
+    const i = charts.findIndex((c) => c.id === chart.id);
+    if (i >= 0) charts[i] = chart; else charts.push(chart);
+    const kept = saveCharts(charts);
+    const song = chartToSong(chart);
+    const at = SONGS.findIndex((s) => s.id === chart.id);
+    if (at >= 0) SONGS[at] = song; else SONGS.push(song);
+    fillSongSelect();
+    chooseSong(SONGS.indexOf(song)); // a new song object, so this loads it even when re-saving
+    if (!kept) showToast('The browser wouldn\'t store this song, so it is gone when you reload the page.');
+    startSong();
+  },
+  onDelete(id) {
+    charts.splice(charts.findIndex((c) => c.id === id), 1);
+    saveCharts(charts);
+    const at = SONGS.findIndex((s) => s.id === id);
+    const wasLoaded = SONGS[at] === state.song;
+    SONGS.splice(at, 1);
+    fillSongSelect();
+    if (wasLoaded) chooseSong(0);
+    showScreen('songs');
+  },
+});
 
 // ---- Magnifier -------------------------------------------------------------
 // A close-up of the fretting hand's part of the neck, seen from above so the strings are well apart,
@@ -1218,7 +1258,12 @@ function fillGrouped(el, items, groupOf, label) {
 }
 
 const select = $('song-select');
-fillGrouped(select, SONGS, songGroup, (song) => song.title);
+function fillSongSelect() {
+  select.replaceChildren();
+  fillGrouped(select, SONGS, songGroup, (song) => song.title);
+  select.value = SONGS.indexOf(state.song);
+}
+fillSongSelect();
 select.addEventListener('change', () => {
   exitLesson();
   chooseSong(Number(select.value));
@@ -1229,6 +1274,9 @@ $('start').addEventListener('click', () => showScreen('songs'));
 $('start-lessons').addEventListener('click', () => showScreen('lessons'));
 $('start-tuner').addEventListener('click', () => showScreen('tuner'));
 $('start-help').addEventListener('click', () => showScreen('help'));
+$('start-import').addEventListener('click', () => openImport(null));
+$('song-import').addEventListener('click', () => openImport(null));
+$('song-edit').addEventListener('click', () => openImport(charts.find((c) => c.id === state.song.id)));
 $('tuner-open').addEventListener('click', () => showScreen('tuner'));
 buildTuner();
 $('menu-open').addEventListener('click', () => showScreen('home'));
@@ -1347,6 +1395,8 @@ window.addEventListener('keydown', (e) => {
   const t = e.target;
   if (t.tagName === 'SELECT' && e.code !== 'Escape') return;
   if (t.tagName === 'INPUT' && t.type === 'range' && e.code.startsWith('Arrow')) return;
+  // Typing a title or a tempo is not a shortcut.
+  if (t.tagName === 'INPUT' && (t.type === 'text' || t.type === 'number') && e.code !== 'Escape') return;
   if (e.code === 'KeyM') {
     setMagnify(!magnify);
     return;

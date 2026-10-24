@@ -154,6 +154,7 @@
       <div class="row link-row">
         <button id="start-help" class="link">📖 How to read the screen</button>
         <button id="start-tuner" class="link">🎵 Tune your guitar first</button>
+        <button id="start-import" class="link">⤒ Import a song from an MP3</button>
       </div>
     </div>
 
@@ -207,7 +208,50 @@
         <span class="small muted">Below 100% the song waits until you play each chord or note right. It uses the microphone, so the browser will ask for it.</span>
       </div>
       <label class="check"><input class="guide" type="checkbox"> Play-along guitar sound</label>
+      <div class="row song-actions">
+        <button id="song-edit" hidden title="Fix the chords, tempo or capo of this imported song">✎ Edit chords</button>
+        <button id="song-import" title="Work out the chords of a song from an audio file">⤒ Import from MP3</button>
+      </div>
       <button id="song-go" class="primary big">▶ Play</button>
+    </div>
+
+    <div class="card wide" id="screen-import" hidden>
+      <div class="card-head">
+        <button class="back" title="Back (Esc)">← Back</button>
+        <h2>Import a song</h2>
+      </div>
+      <p class="muted small">Pick an MP3 (or another audio file). Fretview listens for the beat and the chords and turns
+        them into a chord chart you can play along to. It gets some bars wrong, so check the chart and fix them.
+        The file never leaves this device, and imported songs are forgotten when you close the browser.</p>
+      <label class="file-pick"><input id="import-file" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac">
+        <span id="import-file-label">Choose an audio file…</span></label>
+      <div id="import-progress" hidden>
+        <div id="import-status" class="small"></div>
+        <div class="meter"><div id="import-level"></div></div>
+      </div>
+      <div id="import-editor" hidden>
+        <label class="field">Title <input id="import-title" type="text" maxlength="80"></label>
+        <div class="import-grid">
+          <label class="field">Tempo (BPM) <input id="import-bpm" type="number" min="30" max="240" step="1"></label>
+          <label class="field" title="How many beats make a bar">Time
+            <select id="import-meter"><option value="4">4/4</option><option value="3">3/4</option></select></label>
+          <label class="field" title="If the bars come out twice as long or short as they should be, the beat was heard at the wrong speed">Beat
+            <select id="import-tempo"><option value="1">As heard</option><option value="0.5">Half as fast</option><option value="2">Twice as fast</option></select></label>
+          <label class="field" title="Put a capo on this fret. The chosen capo lets the most chords use open shapes.">Capo
+            <select id="import-capo"></select></label>
+          <label class="field">Strumming
+            <select id="import-strum"></select></label>
+          <div class="field" title="If the chords change in the middle of the bars, move where the bars start">Bars start
+            <div class="row"><button id="import-earlier" title="One beat earlier">◀ Beat</button><button id="import-later" title="One beat later">Beat ▶</button></div>
+          </div>
+        </div>
+        <div id="import-summary" class="small muted"></div>
+        <div id="import-bars" class="bar-grid"></div>
+        <div class="row import-actions">
+          <button id="import-delete" hidden>🗑 Delete</button>
+          <button id="import-save" class="primary">▶ Save and play</button>
+        </div>
+      </div>
     </div>
 
     <div class="card wide" id="screen-lessons" hidden>
