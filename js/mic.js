@@ -5,6 +5,12 @@ import { midiOf, midiToHz, hzToMidi } from './music.js';
 // listen after a strum. tonal: share of the energy in the four loudest notes for a sound to count
 // as a chord at all (noise spreads evenly, i.e. about 0.33).
 export const LESSON = { sim: 0.75, margin: 0.02, missing: 0.05, wait: 0.62, tonal: 0.45 };
+// Near twins (D / Dm, E / Em, A / Am) are told apart by the notes they differ in: one chord's notes
+// must be this many times louder than the other's to settle it.
+const DUEL = 2;
+// The notes measured one by one at their exact pitch, as MIDI numbers: from below the low E up to
+// past the high e at the 12th fret with a capo on the 7th.
+const NOTE_LO = 36, NOTE_HI = 84;
 
 // Listens to the microphone and judges right-hand events:
 //   - onsets (a string was struck) from spectral flux / level jumps,
@@ -117,7 +123,7 @@ export class MicJudge {
       }
     }
 
-    let fine = null;
+    let fine = null, notes = null;
     if (gate) {
       this.fine.getFloatFrequencyData(this.ffd);
       fine = new Float32Array(12);
@@ -126,12 +132,12 @@ export class MicJudge {
         const pc = ((Math.round(hzToMidi(k * bin)) % 12) + 12) % 12;
         fine[pc] += Math.pow(10, this.ffd[k] / 20);
       }
+      notes = this.noteLevels();
     }
 
     this.level = rms;
     this.pitch = pitch;
-    const amps = fine && this.expected ? this.fundamentals(this.expected) : null;
-    this.frames.push({ t, rms, flux, onset, pitch, chroma, fine, amps });
+    this.frames.push({ t, rms, flux, onset, pitch, chroma, fine, notes });
     while (this.frames.length && this.frames[0].t < t - 3) this.frames.shift();
   }
 
@@ -174,43 +180,64 @@ export class MicJudge {
 
     const missing = this.silentStrings(frets, win);
 
-    const ok = sim >= LESSON.sim && sim - rivalSim >= LESSON.margin && missing.length === 0;
+    // Against a near twin, the notes the two chords differ in decide when they are clear-cut. Otherwise
+    // the overall profile must lead by the margin.
+    const duel = rival ? this.noteDuel(frets, candidates[rival], win) : null;
+    const clear = duel != null && (duel >= DUEL || duel <= 1 / DUEL);
+    const beatsRival = clear ? duel >= DUEL : sim - rivalSim >= LESSON.margin;
+    const rivalWins = clear ? duel <= 1 / DUEL : rivalSim > sim;
+
+    const ok = sim >= LESSON.sim && beatsRival && missing.length === 0;
     // Was this a chord at all? A strummed chord keeps ringing and puts most of its energy into a few
     // notes; a bump or a tap dies away quickly and spreads over all twelve.
     const ringing = win.reduce((sum, f) => sum + f.rms, 0) / win.length >= this.minRms * 0.4;
     const top4 = [...avg].sort((a, b) => b - a).slice(0, 4).reduce((a, b) => a + b, 0);
     const total = avg.reduce((a, b) => a + b, 0) || 1;
     const musical = ringing && top4 / total >= LESSON.tonal;
-    return { ok: ok && musical, musical, tonality: top4 / total, sim, rival, rivalSim, missing };
+    return { ok: ok && musical, musical, tonality: top4 / total, sim, rival, rivalSim, rivalWins, missing };
   }
 
-  // The lessons say which chord they expect, so every frame can measure each string's fundamental.
-  expect(frets) {
-    this.expected = frets;
-  }
-
-  // Amplitude of each sounding string's fundamental in the fine spectrum (this.ffd).
-  fundamentals(frets) {
+  // Amplitude of every note from NOTE_LO to NOTE_HI at its exact pitch in the fine spectrum (this.ffd).
+  noteLevels() {
     const bin = this.ctx.sampleRate / this.fine.fftSize;
-    const out = {};
-    for (let s = 0; s < 6; s++) {
-      if (!(frets[s] >= 0)) continue;
-      const hz = midiToHz(midiOf(s, frets[s]));
-      let m = 0;
+    const out = new Float32Array(NOTE_HI - NOTE_LO + 1);
+    for (let m = NOTE_LO; m <= NOTE_HI; m++) {
+      const hz = midiToHz(m);
+      let peak = 0;
       for (let k = Math.floor((hz * 0.985) / bin); k <= Math.ceil((hz * 1.015) / bin); k++) {
-        m = Math.max(m, Math.pow(10, this.ffd[k] / 20));
+        peak = Math.max(peak, Math.pow(10, this.ffd[k] / 20));
       }
-      out[s] = m;
+      out[m - NOTE_LO] = peak;
     }
     return out;
+  }
+
+  // Loudness of a string's note over the frames, at its exact pitch.
+  noteLevel(win, s, fret) {
+    const i = midiOf(s, fret) - NOTE_LO;
+    return win.reduce((sum, f) => sum + (f.notes?.[i] ?? 0), 0);
+  }
+
+  // Near twins differ in a note or two, often on a thin, quiet string that hardly moves the overall
+  // profile (a D with a soft high e reads as Dm). So compare those notes directly: how many times louder
+  // the expected chord's notes are than the other chord's. null unless both chords sound the same
+  // strings and differ on at most two of them.
+  noteDuel(frets, other, win) {
+    const differ = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] !== other[s]);
+    if (!differ.length || differ.length > 2 || differ.some((s) => !(frets[s] >= 0) || !(other[s] >= 0))) return null;
+    let mine = 1e-9, theirs = 1e-9;
+    for (const s of differ) {
+      mine += this.noteLevel(win, s, frets[s]);
+      theirs += this.noteLevel(win, s, other[s]);
+    }
+    return mine / theirs;
   }
 
   // Strings whose fundamental is (nearly) absent. A string is only blamed when no other string has
   // an overtone on the same frequency.
   silentStrings(frets, win) {
     const sounding = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] >= 0);
-    const amps = Object.fromEntries(sounding.map((s) => [s, 0]));
-    for (const f of win) for (const s of sounding) amps[s] += f.amps?.[s] ?? 0;
+    const amps = Object.fromEntries(sounding.map((s) => [s, this.noteLevel(win, s, frets[s])]));
     const ref = Math.max(...Object.values(amps)) || 1;
     const f0 = Object.fromEntries(sounding.map((s) => [s, midiToHz(midiOf(s, frets[s]))]));
     const masked = (s) => sounding.some((o) => o !== s && [1, 2, 3, 4, 5, 6].some((h) => Math.abs((f0[o] * h) / f0[s] - 1) < 0.02));
