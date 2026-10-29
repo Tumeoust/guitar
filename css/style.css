@@ -331,6 +331,36 @@ body.menu #pause-fab, body.menu #practice, body.menu #rotate-hint { display: non
   #zoom-view { max-height: 46vh; }
 }
 
+/* Piano partner (body.duet): the guitar takes the left half, the piano the right one; on a portrait
+   screen the guitar is on top and the piano below. The overlays move into the guitar's half, and since
+   that half is narrow, the HUD goes to the top as on narrow screens. */
+.check-hint { display: flex; flex-direction: column; gap: 2px; }
+#piano { display: none; }
+body.duet #piano {
+  display: block; position: fixed; top: 0; right: 0; bottom: 0; width: 50%;
+  border-left: 2px solid rgba(255, 255, 255, 0.18); background: var(--bg);
+}
+body.duet #view { width: 50%; }
+body.duet #hud { top: 12px; bottom: auto; width: min(340px, calc(50% - 82px)); }
+body.duet #zoom { top: 130px; width: min(calc(50% - 24px), 420px); }
+body.duet #feedback { left: 25%; }
+body.duet #pause-fab { right: calc(50% + 20px); }
+body.duet #zoom-fab, body.duet.playing #zoom-fab { right: calc(50% + 20px); }
+body.duet #countdown { right: 50%; }
+body.duet #practice { left: 16px; right: calc(50% + 16px); width: auto; }
+body.duet #rotate-hint { display: none; }
+@media (orientation: portrait) {
+  body.duet #piano { top: 50%; left: 0; width: 100%; border-left: none; border-top: 2px solid rgba(255, 255, 255, 0.18); }
+  body.duet #view { width: 100%; height: 50%; }
+  body.duet #hud { width: auto; right: 70px; }
+  body.duet #zoom { width: min(70vw, 420px); }
+  body.duet #feedback { left: 50%; bottom: 61%; }
+  body.duet #pause-fab { right: 20px; }
+  body.duet #zoom-fab, body.duet.playing #zoom-fab { right: 20px; }
+  body.duet #countdown { right: 0; bottom: 50%; }
+  body.duet #practice { right: 16px; bottom: calc(50% + 16px); }
+}
+
 /* Tuner */
 #screen-tuner { width: min(520px, 100%); }
 #start-tuner, #start-help { margin-top: 14px; }
