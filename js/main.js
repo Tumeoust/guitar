@@ -124,10 +124,16 @@ const state = {
   lastWaitBeat: -Infinity,
   practice: null,
   lessonSong: null, // index in LESSONS while a change drill from the lessons is playing
+  // The part of the song being practised, in beats (to is exclusive), and the song cut down to it: the
+  // cues, the play-along, the grading and the waits only see `part`.
+  range: { from: 0, to: 0 },
+  part: null,
+  // "Wait for me": the clock stops at each chord or note until the microphone hears it right. Any speed.
+  wait: false,
 };
 // Settings the player picks are remembered between visits. Drills from the lessons override some of
 // them while they play (see startDrill); applySettings() puts the player's own choice back.
-const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0, piano: false };
+const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0, piano: false, wait: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('fretview.settings'))); } catch { /* storage unavailable */ }
 function saveSetting(name, value) {
   settings[name] = value;
@@ -150,9 +156,11 @@ const clockNow = () => (audio ? audio.ctx.currentTime : performance.now() / 1000
 const beatsPerSec = () => (state.song.bpm / 60) * state.speed;
 const beatAt = (t) => (state.playing ? state.anchorBeat + (t - state.anchorTime) * beatsPerSec() : state.anchorBeat);
 const timeOfBeat = (b) => state.anchorTime + (b - state.anchorBeat) / beatsPerSec();
-const practiceMode = () => state.speed < 0.999 && !!mic?.active;
-// Practice mode stops at the first chord anyway, so a long count-in at 25 % speed would only be in the way.
-const countInBeats = () => (state.speed < 0.999 ? 1 : state.song.beatsPerBar);
+const practiceMode = () => state.wait && !!mic?.active;
+// Waiting stops at the first chord anyway, and a long count-in at 25 % speed would only be in the way.
+const countInBeats = () => (state.wait || state.speed < 0.999 ? 1 : state.song.beatsPerBar);
+// Where playing starts: one count-in before the part.
+const startBeat = () => state.range.from - countInBeats();
 const COUNTDOWN_SEC = 3;
 const counting = () => state.countdownEnd != null;
 const running = () => state.playing || counting();
@@ -177,8 +185,8 @@ function anchor(beat) {
   state.anchorTime = clockNow();
   state.scheduledBeat = beat;
   state.visBeat = beat;
-  state.judgeIndex = state.song.right.findIndex((ev) => ev.beat >= beat);
-  if (state.judgeIndex < 0) state.judgeIndex = state.song.right.length;
+  state.judgeIndex = state.part.right.findIndex((ev) => ev.beat >= beat);
+  if (state.judgeIndex < 0) state.judgeIndex = state.part.right.length;
   state.waiting = null;
   state.lastWaitBeat = beat - 1e-6;
 }
@@ -187,13 +195,13 @@ function anchor(beat) {
 function play() {
   if (running()) return;
   ensureAudio();
-  if (state.speed < 0.999 && !mic?.active) {
+  if (state.wait && !mic?.active) {
     enableMic().then((err) => err && showToast(`${err}. The song plays on without waiting for you.`));
   }
   hideMenu();
   syncDuet();
-  if (state.anchorBeat >= state.song.length) {
-    state.anchorBeat = -countInBeats();
+  if (state.anchorBeat >= state.range.to || state.anchorBeat < startBeat()) {
+    state.anchorBeat = startBeat();
     resetStats();
   }
   state.countdownEnd = performance.now() + COUNTDOWN_SEC * 1000;
@@ -229,9 +237,9 @@ function pause() {
   if (!state.playing) return;
   // Resume an unfinished wait point from its cue rather than skipping it, and anything else from the
   // start of its bar: after the 3-2-1 it is hard to come back in halfway through a bar.
-  const beat = beatAt(clockNow()), bpb = state.song.beatsPerBar;
+  const beat = beatAt(clockNow()), bpb = state.song.beatsPerBar, { from, to } = state.range;
   state.anchorBeat = state.waiting ? state.waiting.beat
-    : beat <= 0 ? -countInBeats() : Math.min(state.song.length, Math.floor(beat / bpb) * bpb);
+    : beat <= from ? startBeat() : Math.min(to, Math.floor(beat / bpb) * bpb);
   state.playing = false;
   state.waiting = null;
   audio?.stopAll();
@@ -246,7 +254,7 @@ function seek(beat) {
 
 function restart() {
   resetStats();
-  seek(-countInBeats());
+  seek(startBeat());
   if (!state.playing) play();
 }
 
@@ -268,7 +276,8 @@ function applyCapo(capo) {
 function loadSong(song) {
   pause();
   state.song = song;
-  state.anchorBeat = -countInBeats();
+  setRange(0, song.length / song.beatsPerBar);
+  state.anchorBeat = startBeat();
   applyCapo(songCapo(song));
   piano?.setSong(song, songCapo(song));
   $('song-title').textContent = song.title;
@@ -276,20 +285,87 @@ function loadSong(song) {
   resetStats();
 }
 
+// The song cut down to bars [fromBar, toBar): the events in it, and the chords clipped to it.
+function partOf(song, from, to) {
+  if (from <= 0 && to >= song.length) return song;
+  const left = song.left
+    .filter((l) => l.beat < to && l.beat + l.dur > from)
+    .map((l) => {
+      const b = Math.max(from, l.beat);
+      return { ...l, beat: b, dur: Math.min(to, l.beat + l.dur) - b };
+    });
+  return { ...song, left, right: song.right.filter((ev) => ev.beat >= from && ev.beat < to) };
+}
+
+// Practise only bars fromBar..toBar - 1 (counted from 0). Playing starts with a count-in before the part,
+// and ends (or loops) at its end.
+function setRange(fromBar, toBar) {
+  const song = state.song, bpb = song.beatsPerBar;
+  const bars = Math.ceil(song.length / bpb);
+  fromBar = Math.max(0, Math.min(bars - 1, Math.round(fromBar)));
+  toBar = Math.max(fromBar + 1, Math.min(bars, Math.round(toBar)));
+  state.range = { from: fromBar * bpb, to: Math.min(song.length, toBar * bpb) };
+  state.part = partOf(song, state.range.from, state.range.to);
+  if (state.playing || counting()) pause();
+  state.anchorBeat = startBeat();
+  renderRange();
+}
+
+const wholeSong = () => state.range.from === 0 && state.range.to >= state.song.length;
+
+// The part picker in the song list and in the settings: the song's sections, plus any bars typed in.
+function renderRange() {
+  const song = state.song, bpb = song.beatsPerBar, { from, to } = state.range;
+  const fromBar = from / bpb, toBar = Math.ceil(to / bpb);
+  const idx = wholeSong() ? 'all' : String(song.sections.findIndex((s) => s.from === fromBar && s.to === toBar));
+  document.querySelectorAll('.part-select').forEach((el) => {
+    const opts = [new Option('Whole song', 'all'), ...song.sections.map((sec, i) => new Option(
+      `${sec.name} (bar${sec.to - sec.from > 1 ? `s ${sec.from + 1}–${sec.to}` : ` ${sec.from + 1}`})`, i))];
+    opts.push(new Option('Custom bars', '-1'));
+    el.replaceChildren(...opts);
+    el.value = idx;
+  });
+  const bars = Math.ceil(song.length / bpb);
+  document.querySelectorAll('.bar-from').forEach((el) => { el.max = bars; el.value = fromBar + 1; });
+  document.querySelectorAll('.bar-to').forEach((el) => { el.max = bars; el.value = toBar; });
+  document.querySelectorAll('.bar-count').forEach((el) => { el.textContent = `of ${bars}`; });
+  const range = $('progress-range');
+  range.hidden = wholeSong();
+  range.style.left = `${(from / song.length) * 100}%`;
+  range.style.width = `${((to - from) / song.length) * 100}%`;
+  $('part-badge').hidden = wholeSong();
+  $('part-badge').textContent = idx !== '-1' && idx !== 'all' ? song.sections[idx].name
+    : `Bars ${fromBar + 1}–${toBar}`;
+}
+
 function setSpeed(pct) {
   const b = beatAt(clockNow());
   state.speed = pct / 100;
   state.waiting = null;
   document.querySelectorAll('.speeds button').forEach((el) => el.classList.toggle('on', Number(el.dataset.speed) === pct));
-  if (state.speed < 0.999 && state.playing && !mic?.active) {
-    enableMic().then((err) => err && showToast(`${err}. The song plays on without waiting for you.`));
-  }
-  $('speed-badge').hidden = pct === 100;
-  $('speed-badge').textContent = `${pct}% speed`;
+  renderSpeedBadge();
   if (state.playing) {
     state.anchorBeat = b;
     state.anchorTime = clockNow();
     state.scheduledBeat = Math.max(state.scheduledBeat, b);
+  }
+}
+
+function renderSpeedBadge() {
+  const pct = Math.round(state.speed * 100);
+  const parts = [pct < 100 ? `${pct}% speed` : '', state.wait ? 'waits for you' : ''].filter(Boolean);
+  $('speed-badge').hidden = !parts.length;
+  $('speed-badge').textContent = parts.join(' · ');
+}
+
+// "Wait for me": the song stops at each chord or note until it is played right, at any speed.
+function setWait(on) {
+  state.wait = on;
+  state.waiting = null;
+  document.querySelectorAll('.wait-toggle').forEach((el) => { el.checked = on; });
+  renderSpeedBadge();
+  if (on && state.playing && !mic?.active) {
+    enableMic().then((err) => err && showToast(`${err}. The song plays on without waiting for you.`));
   }
 }
 
@@ -306,10 +382,10 @@ function schedule(from, to) {
   const bpb = state.song.beatsPerBar;
   const every = state.song.clickEvery || 1;
   for (let k = Math.ceil(from / every) * every; k < to; k += every) {
-    if (k < 0 || state.metro) audio.click(timeOfBeat(k), ((k % bpb) + bpb) % bpb === 0);
+    if (k < state.range.from || state.metro) audio.click(timeOfBeat(k), ((k % bpb) + bpb) % bpb === 0);
   }
   if (!state.guide) return;
-  for (const ev of state.song.right) {
+  for (const ev of state.part.right) {
     if (ev.beat >= to) break;
     if (ev.beat >= from) audio.playEvent(ev, timeOfBeat(ev.beat));
   }
@@ -324,7 +400,7 @@ const GRADES = {
 };
 
 function judgeEvents(now) {
-  const evs = state.song.right;
+  const evs = state.part.right;
   while (state.judgeIndex < evs.length) {
     const ev = evs[state.judgeIndex];
     const expected = timeOfBeat(ev.beat);
@@ -389,8 +465,8 @@ async function enableMic() {
   $('mic-toggle').textContent = '🎤 Disable microphone';
   // Only judge what comes after the mic was switched on.
   const beat = beatAt(clockNow());
-  const idx = state.song.right.findIndex((ev) => ev.beat >= beat);
-  state.judgeIndex = idx < 0 ? state.song.right.length : idx;
+  const idx = state.part.right.findIndex((ev) => ev.beat >= beat);
+  state.judgeIndex = idx < 0 ? state.part.right.length : idx;
   return null;
 }
 
@@ -532,6 +608,7 @@ async function startDrill(i) {
   state.lessonSong = i;
   $('song-sub').textContent = `Lesson ${i + 1} of ${LESSONS.length} — ${LESSONS[i].tip}`;
   setSpeed(100);
+  setWait(false);
   state.metro = $('metro').checked = true;
   await enableMic(); // for grading; the drill plays without it too
   play();
@@ -619,8 +696,9 @@ function updateHud(beat) {
   const now = cues.nowSeg, next = cues.nextSeg;
   const nowName = now ? now.name || describe(now.shape) : '';
   const nextName = next ? next.name || describe(next.shape) : '';
-  const count = state.playing && beat < 0 ? String(bpb + Math.floor(beat) + 1) : '';
-  const shown = Math.max(0, Math.min(beat, song.length - 0.001));
+  const { from, to } = state.range;
+  const count = state.playing && beat < from ? String(bpb + Math.floor(beat - from) + 1) : '';
+  const shown = Math.max(from, Math.min(beat, to - 0.001));
   const bar = `Bar ${Math.floor(shown / bpb) + 1} · Beat ${Math.floor(shown % bpb) + 1}`;
   const hud = `${nowName}|${nextName}|${count}|${bar}`;
   if (hud !== lastHud) {
@@ -662,7 +740,7 @@ function startWait(ev, t) {
   state.waitOnset = t - 0.5; // a strum just before the cue arrives still counts
   state.waitTries = 0;
   // Let the clock run on for a little while, but never past the next wait point.
-  const next = state.song.right.find((e) => e.wait && e.beat > ev.beat);
+  const next = state.part.right.find((e) => e.wait && e.beat > ev.beat);
   state.waitCap = Math.min(ev.beat + graceSec(ev) * beatsPerSec(), next ? next.beat : Infinity);
   setPracticeStatus(waitPrompt(ev));
 }
@@ -704,12 +782,13 @@ function checkWait(t) {
 
 function showResults() {
   const acc = accuracy();
+  const done = wholeSong() ? 'Song complete' : `${$('part-badge').textContent} complete`;
   const p = state.practice;
   $('results').innerHTML = p.total
-    ? `<h2>Song complete</h2><p class="muted">${p.firstTry} of ${p.total} right on the first try</p>`
+    ? `<h2>${done}</h2><p class="muted">${p.firstTry} of ${p.total} right on the first try</p>`
     : mic?.active && acc != null
       ? `<h2>${acc}% accuracy</h2><p class="muted">Best streak ${state.stats.best}</p>`
-      : `<h2>Song complete</h2>${mic?.active ? '' : '<p class="muted small">Switch on 🎤 Microphone feedback in the settings (☰) to have each strum graded.</p>'}`;
+      : `<h2>${done}</h2>${mic?.active ? '' : '<p class="muted small">Switch on 🎤 Microphone feedback in the settings (☰) to have each strum graded.</p>'}`;
   const drill = state.lessonSong;
   if (drill != null) markLessonDone(drill);
   const next = drill == null ? -1 : drill + 1;
@@ -830,7 +909,7 @@ function chooseSong(i) {
 }
 
 function startSong() {
-  if (state.anchorBeat >= state.song.length) restart();
+  if (state.anchorBeat >= state.range.to) restart();
   else play();
 }
 
@@ -1152,7 +1231,7 @@ function frame() {
   }
 
   if (state.playing && practiceMode() && !state.waiting) {
-    const ev = song.right.find((e) => e.wait && e.beat > state.lastWaitBeat && e.beat <= beat);
+    const ev = state.part.right.find((e) => e.wait && e.beat > state.lastWaitBeat && e.beat <= beat);
     if (ev) startWait(ev, t);
   }
   if (state.waiting) {
@@ -1172,7 +1251,7 @@ function frame() {
       schedule(state.scheduledBeat, horizon);
       state.scheduledBeat = horizon;
     }
-    for (const ev of song.right) {
+    for (const ev of state.part.right) {
       if (ev.beat > beat) break;
       if (ev.beat > state.visBeat) {
         for (const s of ev.strings) guitar.pluck(s, ev.kind === 'pick' ? 1 : 0.7);
@@ -1181,12 +1260,12 @@ function frame() {
     }
     state.visBeat = beat;
 
-    if (beat >= song.length + 1) {
+    if (beat >= state.range.to + 1) {
       if (state.loop) {
-        seek(0);
-        beat = 0;
+        seek(state.range.from);
+        beat = state.range.from;
       } else {
-        state.anchorBeat = song.length;
+        state.anchorBeat = state.range.to;
         state.playing = false;
         updatePlayButton();
         showResults();
@@ -1205,7 +1284,7 @@ function frame() {
   }
 
   const lookBeats = state.lookSec * beatsPerSec();
-  cues.update(song, beat, lookBeats, dt, {
+  cues.update(state.part, beat, lookBeats, dt, {
     overrun: practising ? OVERRUN_SEC * beatsPerSec() : 0,
     hold: state.waiting?.beat ?? null,
   });
@@ -1335,9 +1414,37 @@ document.querySelectorAll('.piano-toggle').forEach((el) => el.addEventListener('
   setPiano(el.checked);
 }));
 
+document.querySelectorAll('.wait-toggle').forEach((el) => el.addEventListener('change', () => {
+  setWait(el.checked);
+  saveSetting('wait', el.checked);
+}));
+// Picking a part, or typing bars, sets the range; Custom bars just leaves the bar fields to type in.
+document.querySelectorAll('.part-select').forEach((el) => el.addEventListener('change', () => {
+  const v = el.value;
+  if (v === 'all') setRange(0, Infinity);
+  else if (v !== '-1') {
+    const sec = state.song.sections[Number(v)];
+    setRange(sec.from, sec.to);
+  } else {
+    document.querySelectorAll('.part-select').forEach((other) => { other.value = '-1'; });
+    el.closest('.part')?.querySelector('.bar-from')?.focus();
+    return;
+  }
+  el.blur();
+}));
+document.querySelectorAll('.part').forEach((box) => {
+  const apply = () => {
+    const from = Number(box.querySelector('.bar-from').value) || 1;
+    const to = Number(box.querySelector('.bar-to').value) || from;
+    setRange(from - 1, Math.max(from, to));
+  };
+  box.querySelectorAll('.bar-from, .bar-to').forEach((el) => el.addEventListener('change', apply));
+});
+
 function applySettings() {
   document.querySelectorAll('.capo-select').forEach((el) => { el.value = settings.capo; });
   setSpeed(settings.speed);
+  setWait(settings.wait);
   setGuide(settings.guide);
   setLook(settings.look);
   setPiano(settings.piano);
@@ -1385,7 +1492,7 @@ $('progress').addEventListener('click', (e) => {
   const r = e.currentTarget.getBoundingClientRect();
   const bpb = state.song.beatsPerBar;
   const target = Math.floor((((e.clientX - r.left) / r.width) * state.song.length) / bpb) * bpb;
-  seek(target);
+  seek(Math.max(state.range.from, Math.min(state.range.to - bpb, target)));
 });
 
 window.addEventListener('keydown', (e) => {
@@ -1393,6 +1500,7 @@ window.addEventListener('keydown', (e) => {
   const t = e.target;
   if (t.tagName === 'SELECT' && e.code !== 'Escape') return;
   if (t.tagName === 'INPUT' && t.type === 'range' && e.code.startsWith('Arrow')) return;
+  if (t.tagName === 'INPUT' && t.type === 'number' && e.code !== 'Escape') return; // typing a bar number
   if (e.code === 'KeyM') {
     setMagnify(!magnify);
     return;
@@ -1427,7 +1535,7 @@ window.addEventListener('keydown', (e) => {
     const cur = beatAt(clockNow());
     const dir = e.code === 'ArrowRight' ? 1 : -1;
     const target = (Math.floor(cur / bpb + 0.01) + dir) * bpb;
-    seek(Math.max(-bpb, Math.min(state.song.length, target)));
+    seek(Math.max(state.range.from - bpb, Math.min(state.range.to, target)));
   }
 });
 

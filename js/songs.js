@@ -1,8 +1,10 @@
 // Song data. A song has two tracks:
 //   left:  what the fretting hand holds  { beat, dur, name, shape: { frets[6], fingers[6] } }
 //   right: what the picking hand does    { beat, kind: 'strum'|'pick', dir: 'D'|'U', strings[], frets[6], fingers[6], wait }
-// In practice mode (below 100 % speed) the song stops at every event with wait: true until it is played right.
+// When "wait for me" is on, the song stops at every event with wait: true until it is played right.
 // Beats are in the song's own beat unit (quarter notes, or eighths for 6/8).
+// Every song also has sections: [{ name, from, to }] in bars (from inclusive, to exclusive), so a part of it
+// can be practised on its own. Songs that don't name their sections get one every four bars.
 
 export const CHORDS = {
   Em: { frets: [0, 2, 2, 0, 0, 0], fingers: [0, 2, 3, 0, 0, 0] },
@@ -123,15 +125,57 @@ function onePhrase(pattern) {
   return [['Bm', pattern], ['G', pattern], ['Bm', pattern], ['G', pattern], ['Bm', pattern], ['D', pattern], ['G', pattern, 2]];
 }
 
+// A strum song made of named parts: parts is [[name, progression]]. Returns the song with its sections.
+// A name used more than once is numbered (Verse 1, Verse 2).
+function sectionedSong(meta, parts) {
+  const progression = [], sections = [];
+  let bar = 0;
+  for (const [name, prog] of parts) {
+    const bars = prog.reduce((n, [, , b = 1]) => n + b, 0);
+    sections.push({ name, from: bar, to: bar + bars });
+    progression.push(...prog);
+    bar += bars;
+  }
+  const count = {}, seen = {};
+  for (const sec of sections) count[sec.name] = (count[sec.name] || 0) + 1;
+  for (const sec of sections) if (count[sec.name] > 1) sec.name = `${sec.name} ${(seen[sec.name] = (seen[sec.name] || 0) + 1)}`;
+  return { ...strumSong(meta, progression), sections };
+}
+
+const barsOf = (chords, pattern) => chords.map((c) => [c, pattern]);
+
 // I See Fire (Ed Sheeran), the version with a capo on the 6th fret: each section's chord changes, one chord
 // per bar. G/B is played as a plain G, and the A at the end of the chorus is left out.
 function iSeeFire() {
-  const bars = (chords, pattern) => chords.map((c) => [c, pattern]);
-  const intro = bars(['Em', 'C', 'D', 'Em', 'Em', 'C', 'D', 'Em'], 'whole');
-  const verse = bars(['Em', 'G', 'D', 'C', 'C', 'Am', 'G', 'C'], 'ballad');
-  const chorus = bars(['Em', 'C', 'D', 'Em', 'Em', 'C', 'D', 'Em'], 'campfire');
-  const bridge = bars(['Am', 'Em', 'G', 'D', 'Am', 'Em', 'G', 'D', 'Am', 'G', 'C', 'D'], 'quarters');
-  return [...intro, ...verse, ...chorus, ...verse, ...chorus, ...bridge, ...chorus, ['Em', 'whole']];
+  const intro = barsOf(['Em', 'C', 'D', 'Em', 'Em', 'C', 'D', 'Em'], 'whole');
+  const verse = barsOf(['Em', 'G', 'D', 'C', 'C', 'Am', 'G', 'C'], 'ballad');
+  const chorus = barsOf(['Em', 'C', 'D', 'Em', 'Em', 'C', 'D', 'Em'], 'campfire');
+  const bridge = barsOf(['Am', 'Em', 'G', 'D', 'Am', 'Em', 'G', 'D', 'Am', 'G', 'C', 'D'], 'quarters');
+  return [['Intro', intro], ['Verse', verse], ['Chorus', chorus], ['Verse', verse], ['Chorus', chorus],
+    ['Bridge', bridge], ['Chorus', chorus], ['Ending', [['Em', 'whole']]]];
+}
+
+// Aerials (System of a Down): a simplified arrangement in standard tuning around D minor, with open
+// chords from the lessons instead of the drop-C riffs of the record. Only chords and strum patterns, no
+// melody or lyrics. Clean picked intro as whole-bar strums, quiet verses, a fuller chorus.
+function aerials() {
+  const intro = barsOf(['Dm', 'C', 'Dm', 'C', 'Dm', 'C', 'F', 'Am'], 'whole');
+  const verse = barsOf(['Dm', 'C', 'F', 'G', 'Dm', 'C', 'F', 'A'], 'ballad');
+  const chorus = barsOf(['F', 'C', 'Dm', 'Am', 'F', 'C', 'Dm', 'Dm'], 'campfire');
+  const bridge = barsOf(['Am', 'Dm', 'Am', 'Dm', 'F', 'G', 'A', 'A'], 'quarters');
+  return [['Intro', intro], ['Verse', verse], ['Chorus', chorus], ['Verse', verse], ['Chorus', chorus],
+    ['Bridge', bridge], ['Chorus', chorus], ['Outro', [...barsOf(['Dm', 'C', 'Dm', 'C'], 'whole'), ['Dm', 'whole']]]];
+}
+
+// Songs without named parts get one section every four bars.
+function withSections(song) {
+  if (song.sections) return song;
+  const total = Math.ceil(song.length / song.beatsPerBar), sections = [];
+  for (let b = 0; b < total; b += 4) {
+    const to = Math.min(total, b + 4);
+    sections.push({ name: to - b > 1 ? `Bars ${b + 1}–${to}` : `Bar ${b + 1}`, from: b, to });
+  }
+  return { ...song, sections };
 }
 
 function warmup() {
@@ -201,9 +245,14 @@ export const SONGS = [
     [...onePhrase('whole'), ...onePhrase('ballad'), ...onePhrase('ballad'), ...onePhrase('ballad'), ['Bm', 'whole']],
   ),
   // I See Fire (Ed Sheeran): only the chords and a strum pattern for each section, no melody or lyrics.
-  strumSong(
+  sectionedSong(
     { id: 'i-see-fire', title: 'I See Fire', subtitle: 'Ed Sheeran — capo on the 6th fret, Em – C – D – G – Am', bpm: 76, beatsPerBar: 4, capo: 6 },
     iSeeFire(),
+  ),
+  // Aerials (System of a Down): only the chords and a strum pattern for each section, no melody or lyrics.
+  sectionedSong(
+    { id: 'aerials', title: 'Aerials', subtitle: 'System of a Down — simplified to open chords around Dm, no drop tuning', bpm: 80, beatsPerBar: 4 },
+    aerials(),
   ),
   drillSong({ id: 'drill-em-am', title: 'Change drill: Em ↔ Am', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Em', 'Am']),
   drillSong({ id: 'drill-g-c', title: 'Change drill: G ↔ C', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'C']),
@@ -212,6 +261,7 @@ export const SONGS = [
   drillSong({ id: 'drill-campfire', title: 'Change drill: G – Em – C – D', subtitle: 'The changes in Campfire Strum, with fewer free beats each round' }, ['G', 'Em', 'C', 'D']),
   drillSong({ id: 'drill-cinnamon', title: 'Change drill: C – Em – D – Am', subtitle: 'The changes in Cinnamon Girl, with fewer free beats each round' }, ['C', 'Em', 'D', 'Am']),
   drillSong({ id: 'drill-i-see-fire', title: 'Change drill: Em – C – D', subtitle: 'The chorus changes in I See Fire, with fewer free beats each round' }, ['Em', 'C', 'D']),
+  drillSong({ id: 'drill-aerials', title: 'Change drill: Dm – C – F – Am', subtitle: 'The changes in Aerials, with fewer free beats each round' }, ['Dm', 'C', 'F', 'Am']),
   drillSong({ id: 'drill-bm-g', title: 'Change drill: Bm ↔ G', subtitle: 'The main change in One, with fewer free beats each round' }, ['Bm', 'G']),
   drillSong({ id: 'drill-am-e', title: 'Change drill: Am ↔ E', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Am', 'E']),
-];
+].map(withSections);
