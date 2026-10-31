@@ -20,7 +20,7 @@
 
   <header id="hud">
     <div class="song">
-      <div><span id="song-title">—</span> <span id="capo" hidden title="Put a capo on this fret. The dots and fret numbers count from the capo."></span> <span id="speed-badge" hidden title="Practice speed: the song waits for you to play each chord right"></span></div>
+      <div><span id="song-title">—</span> <span id="capo" hidden title="Put a capo on this fret. The dots and fret numbers count from the capo."></span> <span id="speed-badge" hidden title="Practice speed, and whether the song waits for you to play each chord right"></span> <span id="part-badge" hidden title="Only this part of the song plays"></span></div>
       <div id="song-sub" class="muted"></div>
     </div>
     <div class="chords">
@@ -31,7 +31,7 @@
       <div id="countin"></div>
       <div id="barbeat" class="muted">Bar 1 · Beat 1</div>
     </div>
-    <div id="progress" title="Click to jump"><div id="progress-fill"></div></div>
+    <div id="progress" title="Click to jump"><div id="progress-range" hidden></div><div id="progress-fill"></div></div>
   </header>
 
   <aside id="panel" class="open">
@@ -46,6 +46,11 @@
       <label class="field" title="Put a capo on this fret to play further down the neck. Lessons, drills and songs without their own capo use it; Cinnamon Girl and I See Fire keep theirs.">Capo
         <select class="capo-select"></select>
       </label>
+      <div class="field part">Part to practise
+        <select class="part-select" aria-label="Part of the song"></select>
+        <span class="bars">Bars <input class="bar-from" type="number" min="1" step="1" aria-label="First bar"> to
+          <input class="bar-to" type="number" min="1" step="1" aria-label="Last bar"> <span class="bar-count"></span></span>
+      </div>
       <div class="row">
         <button id="play" class="primary">▶ Play</button>
         <button id="restart">⟲ Restart</button>
@@ -57,14 +62,17 @@
           <button data-speed="75">75%</button>
           <button data-speed="100" class="on">100%</button>
         </div>
-        <span class="small muted">Below 100% the song waits until you play each chord or note right (uses the microphone).</span>
+      </div>
+      <div class="check-hint">
+        <label class="check"><input class="wait-toggle" type="checkbox"> ⏸ Wait for me</label>
+        <span class="small muted">The song stops at each chord or note until the microphone hears it played right. Works at any speed.</span>
       </div>
       <label class="field">Look-ahead <span id="look-val">2.4 s</span>
         <input id="look" type="range" min="1.2" max="4" step="0.2" value="2.4">
       </label>
       <label class="check"><input id="guide" class="guide" type="checkbox"> Play-along guitar sound</label>
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
-      <label class="check"><input id="loop" type="checkbox"> Loop song</label>
+      <label class="check"><input id="loop" type="checkbox"> Loop song (or the part)</label>
       <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
       <label class="check" title="Split screen for songs: a second player reads the piano notes on the right half (the bottom half on a portrait screen)"><input class="piano-toggle" type="checkbox"> 🎹 Piano partner (split screen)</label>
       <div class="field">Camera
@@ -199,6 +207,11 @@
       <div id="song-list" class="pick-list" role="listbox" aria-label="Songs"></div>
       <label class="capo-row" title="Put a capo on this fret to play further down the neck. Lessons, drills and songs without their own capo use it; Cinnamon Girl and I See Fire keep theirs.">Capo <select class="capo-select"></select>
         <span class="small muted">for songs without their own capo</span></label>
+      <div class="field part">Part to practise <span class="small muted">Play one section, or any bars, instead of the whole song</span>
+      <select class="part-select" aria-label="Part of the song"></select>
+      <span class="bars">Bars <input class="bar-from" type="number" min="1" step="1" aria-label="First bar"> to
+        <input class="bar-to" type="number" min="1" step="1" aria-label="Last bar"> <span class="bar-count"></span></span>
+    </div>
       <div class="field">Practice speed
         <div class="row speeds">
           <button data-speed="25">25%</button>
@@ -206,8 +219,11 @@
           <button data-speed="75">75%</button>
           <button data-speed="100" class="on">100%</button>
         </div>
-        <span class="small muted">Below 100% the song waits until you play each chord or note right. It uses the microphone, so the browser will ask for it.</span>
       </div>
+      <div class="check-hint">
+      <label class="check"><input class="wait-toggle" type="checkbox"> ⏸ Wait for me</label>
+      <span class="small muted">The song stops at each chord or note until the microphone hears it played right. Works at any speed. It uses the microphone, so the browser will ask for it.</span>
+    </div>
       <label class="check"><input class="guide" type="checkbox"> Play-along guitar sound</label>
       <div class="check-hint">
         <label class="check"><input class="piano-toggle" type="checkbox"> 🎹 Piano partner (split screen)</label>

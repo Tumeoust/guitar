@@ -52,7 +52,7 @@ button.icon { padding: 4px 10px; }
   margin-left: 6px; padding: 1px 8px; border-radius: 6px; vertical-align: 2px;
   background: #ffd166; color: #0b0d12; font-size: 12px; font-weight: 800;
 }
-#capo[hidden], #speed-badge[hidden] { display: none; }
+#capo[hidden], #speed-badge[hidden], #part-badge[hidden], #progress-range[hidden] { display: none; }
 #speed-badge {
   margin-left: 4px; padding: 1px 8px; border-radius: 6px; vertical-align: 2px;
   background: var(--accent); color: #06121a; font-size: 12px; font-weight: 800;
@@ -72,7 +72,13 @@ button.icon { padding: 4px 10px; }
   background: rgba(255, 255, 255, 0.1); border-radius: 2px; cursor: pointer;
 }
 #progress::before { content: ""; position: absolute; inset: -6px 0; }
-#progress-fill { height: 100%; width: 0; background: var(--accent); border-radius: 2px; }
+#progress-fill { position: relative; height: 100%; width: 0; background: var(--accent); border-radius: 2px; }
+/* The part being practised, behind the fill. */
+#progress-range { position: absolute; top: -2px; bottom: -2px; background: rgba(255, 209, 102, 0.35); border-radius: 3px; }
+#part-badge { color: #ffd166; font-size: 12px; font-weight: 700; }
+.part .bars { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.field .part-select, .part select { width: 100%; }
+.field .bars input { width: 4.2em; }
 
 /* Settings panel */
 
@@ -115,7 +121,7 @@ body.playing #pause-fab { display: block; }
 .field { display: flex; flex-direction: column; gap: 4px; }
 .field span { color: var(--muted); font-size: 12px; }
 .field select, .field input { width: 100%; }
-select {
+select, input[type=number] {
   font: inherit; color: var(--text); background: #171b26;
   border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px;
 }

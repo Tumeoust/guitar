@@ -20,7 +20,7 @@ are no note names. The game only shows what each hand has to do:
   Filled dots are the chord to hold; the next chord shows as hollow rings in the same finger colours, and a ring
   round a filled dot means that finger stays put. As soon as the last strum of a chord has gone past the line, the
   next chord fills in, so your fingers can move before its first strum arrives; the *Now* and *Next* chords in the
-  info box switch at the same moment. Below 100 % speed, a chord the game is still waiting for stays on the neck
+  info box switch at the same moment. With *Wait for me* on, a chord the game is still waiting for stays on the neck
   until it has been played right.
 - **Right hand.** Below the hand, strums and picks fall down the strum lane to the white line, like notes in
   Guitar Hero. Strum or pick when they reach it.
@@ -56,9 +56,9 @@ When a song ends, the results screen offers *Play again*, the next lesson after 
 list. *Exit* in a lesson goes back to the lesson list. **⌂ Menu** in the settings, or Esc while paused, returns
 to the start screen.
 
-Settings (practice speed, capo, play-along sound, metronome, loop, look-ahead, mic delay) are remembered between
-visits. The "In time" drills switch the metronome on and play at 100 %, and your own settings come back when
-you leave the drill. Below 100 %, the HUD shows the speed next to the song title.
+Settings (practice speed, wait for me, capo, play-along sound, metronome, loop, look-ahead, mic delay) are remembered
+between visits. The "In time" drills switch the metronome on, play at 100 % and don't wait, and your own settings come
+back when you leave the drill. Below 100 %, or with *Wait for me* on, the HUD shows that next to the song title.
 
 If the microphone can't be opened, the app says why in plain words (blocked, not found, in use by another app)
 instead of failing silently. A lesson then still shows its chord and offers *Try again*.
@@ -84,7 +84,7 @@ strings ring open, and which not to play. The setting is remembered.
 **🎹 Piano partner (split screen)** (in the song list and in the settings) lets a second player join on piano.
 While a song plays, the guitar moves to the left half of the screen and the piano part of the same song scrolls
 on the right half, on a grand staff with a keyboard below it (on a portrait screen the guitar is on top and the
-piano below). Both follow the same clock, so at a practice speed the piano waits along with the guitar.
+piano below). Both follow the same clock, so when the song waits for you the piano waits along with the guitar.
 Lessons, the menu and the tuner always use the whole screen. The setting is remembered.
 
 ## Chord lessons
@@ -122,11 +122,21 @@ Pressing Play hides the settings and counts down 3, 2, 1 on screen before the so
 in the corner (or Space) pauses and brings the settings back. Playing on resumes from the start of the bar
 you paused in. Switching to another tab or app pauses the song.
 
-**Practice speeds.** Every song can be played at 25 %, 50 %, 75 % or 100 % speed. Below 100 %, the song stops at
+**Practice speeds.** Every song can be played at 25 %, 50 %, 75 % or 100 % speed.
+
+**Wait for me** (in the song list and the settings, off by default) works at any speed. When it is on, the song stops at
 the start of each bar and waits until the microphone hears the chord played right; the same feedback as in the
-lessons tells you what to fix. In single-note songs it waits for every note. The cues keep sliding a little way
+lessons tells you what to fix. In single-note songs it waits for every note. When it is off, the song plays straight
+through at the chosen speed. The cues keep sliding a little way
 past the line while the microphone listens, so playing on time doesn't stall the song; it only stops if you
-haven't played it right by then. At 100 % it plays straight through.
+haven't played it right by then.
+
+**Practising one part.** *Part to practise* (in the song list and the settings) plays only one section of a song
+instead of the whole thing: Intro, Verse 1, Chorus 2 and so on for songs that name their parts (I See Fire, Aerials),
+or four bars at a time for the others. The *Bars … to …* fields pick any bars by hand. Play starts with a count-in
+right before the part and ends at its end, with a results screen for just that part; with *Loop* on it goes round
+the part again. The progress bar shows the part as a highlighted stretch, the HUD names it, and clicking the bar or
+← / → stay inside it. Picking another song goes back to the whole song.
 
 An optional **microphone mode** listens to your guitar and grades each strum or pick as
 *Perfect*, *Good*, *Wrong notes* or *Miss*:
@@ -163,7 +173,9 @@ Microphone access needs a secure context: `localhost` or HTTPS.
 | ← / →              | Jump back / forward one bar            |
 | Drag / scroll      | Move / zoom the camera (Player and Top view) |
 | Camera             | Highway (looking up the neck, strums falling to the line), Player or Top |
-| Practice speed     | 25 / 50 / 75 / 100 %; below 100 % the song waits for you |
+| Practice speed     | 25 / 50 / 75 / 100 %                   |
+| Wait for me        | The song stops at each chord or note until it is played right (any speed, off by default) |
+| Part to practise   | Play one section or any range of bars, instead of the whole song |
 | Look-ahead slider  | How early cues appear                  |
 | Play-along sound   | Synthesised guitar playing the part (off by default) |
 | Mic delay          | Compensates for microphone latency     |
@@ -182,6 +194,9 @@ The settings panel folds away while a song plays, and comes back when you pause.
   pattern, no melody or lyrics.
 - One (Metallica): the clean intro simplified to Bm – G – D, with an easy four-string Bm (no barre). Only the
   chords and a strum pattern, no melody or lyrics.
+- Aerials (System of a Down): simplified to open chords around D minor (Dm, C, F, G, Am, A) in standard tuning,
+  without the drop-C tuning or the riffs of the record. Intro, verses, choruses, bridge and outro. Only the chords and
+  a strum pattern, no melody or lyrics. *Change drill: Dm – C – F – Am* practises its changes.
 - I See Fire (Ed Sheeran): the version with a capo on the 6th fret, using the Em, C, D, G and Am shapes. Intro, verses,
   choruses and bridge, one chord per bar, with G/B played as G. Only the chords and a strum pattern, no melody or
   lyrics.
