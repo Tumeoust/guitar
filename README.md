@@ -79,6 +79,14 @@ part of the neck in the top-left corner, seen from above so the strings are well
 shape along the neck. Below it, the shape is spelled out: which finger goes on which string and fret, which
 strings ring open, and which not to play. The setting is remembered.
 
+## Piano partner (split screen)
+
+**🎹 Piano partner (split screen)** (in the song list and in the settings) lets a second player join on piano.
+While a song plays, the guitar moves to the left half of the screen and the piano part of the same song scrolls
+on the right half, on a grand staff with a keyboard below it (on a portrait screen the guitar is on top and the
+piano below). Both follow the same clock, so at a practice speed the piano waits along with the guitar.
+Lessons, the menu and the tuner always use the whole screen. The setting is remembered.
+
 ## Chord lessons
 
 The lessons teach one chord at a time with no time pressure (Em, Am, E, A, D, C, G, Dm and Bm), then build up the
@@ -190,6 +198,7 @@ or from arpeggio patterns. The `CHORDS` table defines frets and fingers per stri
 | File             | What it does                                                          |
 | ---------------- | --------------------------------------------------------------------- |
 | `js/main.js`     | Scene setup, clock, audio scheduling, HUD, UI wiring                  |
+| `js/piano.js`    | Piano part for the split-screen partner: arrangement, scrolling grand staff and keyboard |
 | `js/guitar.js`   | Procedural 3D guitar and fretboard geometry (fret / string positions) |
 | `js/cues.js`     | Left-hand finger markers and the right-hand cue highway               |
 | `js/songs.js`    | Chord shapes and song data                                            |

@@ -16,6 +16,7 @@
 </head>
 <body>
   <canvas id="view"></canvas>
+  <div id="piano"></div>
 
   <header id="hud">
     <div class="song">
@@ -65,6 +66,7 @@
       <label class="check"><input id="metro" type="checkbox"> Metronome</label>
       <label class="check"><input id="loop" type="checkbox"> Loop song</label>
       <label class="check" title="Shortcut: M"><input id="magnify" type="checkbox"> 🔍 Magnify the neck (M)</label>
+      <label class="check" title="Split screen for songs: a second player reads the piano notes on the right half (the bottom half on a portrait screen)"><input class="piano-toggle" type="checkbox"> 🎹 Piano partner (split screen)</label>
       <div class="field">Camera
         <div class="row views">
           <button id="view-highway" title="Guitar Hero style: looking up the neck, with strums falling down to the white line">Highway</button>
@@ -207,6 +209,10 @@
         <span class="small muted">Below 100% the song waits until you play each chord or note right. It uses the microphone, so the browser will ask for it.</span>
       </div>
       <label class="check"><input class="guide" type="checkbox"> Play-along guitar sound</label>
+      <div class="check-hint">
+        <label class="check"><input class="piano-toggle" type="checkbox"> 🎹 Piano partner (split screen)</label>
+        <span class="small muted">A second player reads the piano notes for the same song on the right half of the screen (the bottom half on a portrait screen).</span>
+      </div>
       <button id="song-go" class="primary big">▶ Play</button>
     </div>
 

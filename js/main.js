@@ -8,6 +8,7 @@ import { MicJudge, LESSON } from './mic.js';
 import { midiName, setCapo } from './music.js';
 import { LESSONS, LessonRunner, CANDIDATES, chordFeedback, stringName } from './lessons.js';
 import { Tuner, TUNER_STRINGS, chime } from './tuner.js';
+import { PianoPart } from './piano.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -79,13 +80,22 @@ function chooseView(name) {
 }
 const lessonView = () => (viewChoice === 'highway' ? 'highway' : 'lesson');
 
+// Piano partner: while a song is up, a second player can read the piano part in the other half of the
+// screen (body.duet). The guitar view then has only its half; viewW / viewH are its size in CSS pixels.
+let duet = false;
+let piano = null; // a PianoPart, made the first time the split screen opens
+let viewW = window.innerWidth, viewH = window.innerHeight;
+
 function resize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  camera.aspect = w / h;
+  // CSS gives the canvas its half in duet; otherwise it covers the window.
+  viewW = duet ? renderer.domElement.clientWidth : window.innerWidth;
+  viewH = duet ? renderer.domElement.clientHeight : window.innerHeight;
+  renderer.setSize(viewW, viewH, false);
+  camera.aspect = viewW / viewH;
   camera.fov = 30;
   camera.updateProjectionMatrix();
   setView(currentView);
+  if (duet) piano.resize();
 }
 window.addEventListener('resize', resize);
 resize();
@@ -117,7 +127,7 @@ const state = {
 };
 // Settings the player picks are remembered between visits. Drills from the lessons override some of
 // them while they play (see startDrill); applySettings() puts the player's own choice back.
-const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0 };
+const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0, piano: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('fretview.settings'))); } catch { /* storage unavailable */ }
 function saveSetting(name, value) {
   settings[name] = value;
@@ -181,6 +191,7 @@ function play() {
     enableMic().then((err) => err && showToast(`${err}. The song plays on without waiting for you.`));
   }
   hideMenu();
+  syncDuet();
   if (state.anchorBeat >= state.song.length) {
     state.anchorBeat = -countInBeats();
     resetStats();
@@ -259,6 +270,7 @@ function loadSong(song) {
   state.song = song;
   state.anchorBeat = -countInBeats();
   applyCapo(songCapo(song));
+  piano?.setSong(song, songCapo(song));
   $('song-title').textContent = song.title;
   $('song-sub').textContent = song.subtitle;
   resetStats();
@@ -535,6 +547,7 @@ function exitLesson() {
   setView(viewChoice);
   loadSong(state.song);
   lastHud = '';
+  syncDuet();
 }
 
 function lessonStepText(runner) {
@@ -716,12 +729,14 @@ const inMenu = () => !$('overlay').hidden;
 
 function showScreen(name) {
   pause();
+  // The overlay goes up first, so leaving a lesson for the menu doesn't open the split screen on the way.
+  $('overlay').hidden = false;
+  document.body.classList.add('menu');
   if (document.body.classList.contains('lesson-mode')) exitLesson();
+  syncDuet();
   if (name !== 'tuner') tuner?.stop();
   screen = name;
   for (const n of ['home', 'songs', 'lessons', 'tuner', 'help', 'results']) $(`screen-${n}`).hidden = n !== name;
-  $('overlay').hidden = false;
-  document.body.classList.add('menu');
   if (name === 'songs') {
     // Picking songs ends a drill from the lessons, and with it the settings the drill chose.
     if (state.lessonSong != null) {
@@ -741,6 +756,20 @@ function hideMenu() {
   tuner?.stop();
   $('overlay').hidden = true;
   document.body.classList.remove('menu');
+}
+
+// The split screen is only for songs (and the drills played as songs): not in the menu or in a lesson.
+// Called whenever one of those changes; the frame loop only looks at `duet`.
+function syncDuet() {
+  const on = settings.piano && !inMenu() && !lesson && !noMicView && !document.body.classList.contains('lesson-mode');
+  if (on === duet) return;
+  duet = on;
+  document.body.classList.toggle('duet', on);
+  if (on && !piano) {
+    piano = new PianoPart($('piano'));
+    piano.setSong(state.song, songCapo(state.song));
+  }
+  resize();
 }
 
 // Esc and the ← Back buttons go one level up.
@@ -877,13 +906,14 @@ function renderZoom(dt) {
   zoomCam.position.set(zoomFocus.x, d * Math.cos(ZOOM_TILT), -1.4 + d * Math.sin(ZOOM_TILT));
   zoomCam.lookAt(zoomFocus.x, 0, -1.4);
 
-  const h = window.innerHeight;
+  // The canvas starts at the window's top-left corner, also in duet, so window coordinates work.
+  const h = viewH;
   renderer.setScissorTest(true);
   renderer.setScissor(r.left, h - r.bottom, r.width, r.height);
   renderer.setViewport(r.left, h - r.bottom, r.width, r.height);
   renderer.render(scene, zoomCam);
   renderer.setScissorTest(false);
-  renderer.setViewport(0, 0, window.innerWidth, h);
+  renderer.setViewport(0, 0, viewW, h);
 }
 
 // ---- Highway view ------------------------------------------------------------
@@ -898,7 +928,7 @@ const NECK_FORWARD = new THREE.Vector3(-Math.cos(NECK_TILT), -Math.sin(NECK_TILT
 const neckCenter = new THREE.Vector3();
 
 function renderHighway() {
-  const w = window.innerWidth, h = window.innerHeight;
+  const w = viewW, h = viewH;
   // From the nut (or the capo) at the top to just past the white line at the bottom. The nut stays below the HUD
   // when narrow screens put it at the top, and in a chord lesson the white line stays above the lesson
   // box when the box reaches across the middle.
@@ -1182,12 +1212,14 @@ function frame() {
   guitar.markStrings(cues.shownShape?.frets);
   guitar.update(dt);
   updateHud(beat);
+  // The piano follows the same beat, so in practice mode it waits along with the guitar.
+  if (duet) piano.update(beat, lookBeats);
   render(dt);
 }
 
 function render(dt) {
   renderer.setScissorTest(false);
-  renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
+  renderer.setViewport(0, 0, viewW, viewH);
   if (currentView === 'highway') {
     renderHighway();
   } else {
@@ -1293,12 +1325,22 @@ $('loop').addEventListener('change', (e) => {
   state.loop = e.target.checked;
   saveSetting('loop', state.loop);
 });
+// The piano partner can be switched in the song picker and in the settings.
+function setPiano(on) {
+  document.querySelectorAll('.piano-toggle').forEach((el) => { el.checked = on; });
+  syncDuet();
+}
+document.querySelectorAll('.piano-toggle').forEach((el) => el.addEventListener('change', () => {
+  saveSetting('piano', el.checked);
+  setPiano(el.checked);
+}));
 
 function applySettings() {
   document.querySelectorAll('.capo-select').forEach((el) => { el.value = settings.capo; });
   setSpeed(settings.speed);
   setGuide(settings.guide);
   setLook(settings.look);
+  setPiano(settings.piano);
   state.metro = $('metro').checked = settings.metro;
   state.loop = $('loop').checked = settings.loop;
   $('check-pitch').checked = settings.checkPitch;
@@ -1311,6 +1353,7 @@ document.querySelectorAll('.capo-select').forEach((el) => {
     saveSetting('capo', Number(el.value));
     document.querySelectorAll('.capo-select').forEach((other) => { other.value = settings.capo; });
     applyCapo(lesson || noMicView ? settings.capo : songCapo(state.song));
+    piano?.setSong(state.song, songCapo(state.song));
     if (currentView === 'lesson') setView('lesson');
   });
 });
