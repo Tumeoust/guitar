@@ -185,7 +185,7 @@ export class MicJudge {
 
     // Against a near twin, the notes the two chords differ in decide when they are clear-cut. Otherwise
     // the overall profile must lead by the margin.
-    const duel = rival ? this.noteDuel(frets, candidates[rival], win) : null;
+    const duel = rival ? this.noteDuel(frets, candidates[rival], win) ?? noteClassDuel(avg, frets, candidates[rival]) : null;
     const clear = duel != null && (duel >= DUEL || duel <= 1 / DUEL);
     const beatsRival = clear ? duel >= DUEL : sim - rivalSim >= LESSON.margin;
     const rivalWins = clear ? duel <= 1 / DUEL : rivalSim > sim;
@@ -290,11 +290,29 @@ export class MicJudge {
   }
 }
 
-// The set of notes a shape sounds, ignoring octaves, as a key.
-function pitchClasses(frets) {
+// The notes a shape sounds, ignoring octaves.
+function pitchClassSet(frets) {
   const pcs = new Set();
   frets.forEach((f, s) => { if (f != null && f >= 0) pcs.add(midiOf(s, f) % 12); });
-  return [...pcs].sort((a, b) => a - b).join();
+  return pcs;
+}
+
+// The same, as a key.
+function pitchClasses(frets) {
+  return [...pitchClassSet(frets)].sort((a, b) => a - b).join();
+}
+
+// For rivals that differ on more strings than noteDuel compares (Bm and B7): how much louder, in the
+// chroma, the notes only the expected chord has are than the notes only the rival has. A side with no
+// notes of its own (Em inside Em7) counts as a faint note, a tenth of the loudest note class.
+function noteClassDuel(avg, frets, other) {
+  const mine = pitchClassSet(frets), theirs = pitchClassSet(other);
+  const onlyMine = [...mine].filter((pc) => !theirs.has(pc));
+  const onlyTheirs = [...theirs].filter((pc) => !mine.has(pc));
+  if (!onlyMine.length && !onlyTheirs.length) return null;
+  const faint = 0.1 * Math.max(...avg);
+  const mean = (pcs) => (pcs.length ? pcs.reduce((sum, pc) => sum + avg[pc], 0) / pcs.length : faint);
+  return (mean(onlyMine) + 1e-9) / (mean(onlyTheirs) + 1e-9);
 }
 
 // Expected 12-bin chroma for a set of strings, including the first overtones of each note:
