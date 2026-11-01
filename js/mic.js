@@ -223,14 +223,16 @@ export class MicJudge {
 
   // Near twins differ in a note or two, often on a thin, quiet string that hardly moves the overall
   // profile (a D with a soft high e reads as Dm). So compare those notes directly: how many times louder
-  // the expected chord's notes are than the other chord's. null unless both chords sound the same
-  // strings and differ on at most two of them.
+  // the expected chord's notes are than the other chord's. null unless the strings both chords sound
+  // differ on one or two of them.
   // A differing note that is also an overtone of a string both chords share (the G4 of Em7 over the open
   // G string) says nothing, so it is left out. When only one chord has telling notes (Em7 adds a D to Em),
   // the other side counts as a faint note: a tenth of the loudest shared string.
   noteDuel(frets, other, win) {
-    const differ = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] !== other[s]);
-    if (!differ.length || differ.length > 2 || differ.some((s) => !(frets[s] >= 0) || !(other[s] >= 0))) return null;
+    // Strings only one of the chords sounds are left out (the full F against Fmaj7 differs on the high e).
+    const both = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] >= 0 && other[s] >= 0);
+    const differ = both.filter((s) => frets[s] !== other[s]);
+    if (!differ.length || differ.length > 2) return null;
     const shared = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] === other[s] && frets[s] >= 0);
     const sharedHz = shared.map((s) => midiToHz(midiOf(s, frets[s])));
     const masked = (s, fret) => {
