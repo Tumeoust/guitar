@@ -98,6 +98,20 @@ changes between them in three steps, grouped by the song they lead to:
 3. **In time: X ↔ Y**: a change drill played as a song with the metronome. It starts with one strum per bar,
    so there are three silent beats to move, then two, three and four strums per bar.
 
+After the open chords come the later courses, each starting with its new chords one at a time:
+
+- **F, Dm, C and Am (Aerials)**: the small F and the changes of Aerials.
+- **E7, A7 and B7 (12-Bar Blues)**: seventh chords, the first four-finger chord (B7) and the blues turnaround.
+- **G7, C7 and D7 (When the Saints)**: sevenths that lead to the next chord (G7 → C, C7 → F, D7 → G).
+- **Em7, Cadd9 and Dsus4 (Anchor fingers)**: ring and pinky stay on the 3rd fret of the B and high e strings
+  while the other fingers move. Its race has tighter targets (2.5 s, 1.5 s, 1 s).
+- **Asus2, Dsus2 and Dsus4 (Colour chords)**: lifting and adding one finger on a held A or D.
+- **Am7 and Fmaj7 (Soft Sevenths)**: softer versions of Am and F, with the index as a pivot.
+- **F and Bm barre (First Barre)**: the full six-string F and the five-string Bm, built from the small F and the
+  easy Bm. Its race starts at 4 s, then 3 s, then 2 s.
+
+All chords stay within the first four frets, so they fit the neck view.
+
 The drills are also in the song list under *Chord-change drills*. After a drill, the results screen offers the
 next lesson. Lessons you have finished are ticked off in the lesson list.
 The chord to hold is shown on the neck. The lesson listens through the device microphone and moves on only
@@ -105,6 +119,10 @@ when it hears the chord played correctly. When a strum is wrong, it says what to
 
 - "The G string isn't ringing" when a string's fundamental frequency is missing.
 - "That sounded more like E" when another chord matches better.
+
+Chords that differ in only a note or two (E / E7, Em / Em7, C / Cadd9) are told apart by those notes. A note that
+is also an overtone of a string both chords share is left out of that comparison. Two shapes of the same notes
+(the small F and the barre F) are not rivals: the missing-string check tells you when the barre leaves strings out.
 
 **Hear it** plays the chord once so you know how it should sound. The microphone ignores that playback.
 
@@ -200,6 +218,11 @@ The settings panel folds away while a song plays, and comes back when you pause.
 - I See Fire (Ed Sheeran): the version with a capo on the 6th fret, using the Em, C, D, G and Am shapes. Intro, verses,
   choruses and bridge, one chord per bar, with G/B played as G. Only the chords and a strum pattern, no melody or
   lyrics.
+- 12-Bar Blues in E: the standard blues form with E7, A7 and B7, once plain and once with up-strums.
+- When the Saints Go Marching In (traditional): G, G7, C and D7.
+- Anchor Strum: Em7 – Cadd9 – Dsus4 – G, the anchor-finger family.
+- Soft Sevenths: C – Am7 – Fmaj7 – G, a mellow ballad strum.
+- First Barre: the full F and the barred Bm among open chords.
 
 A song can set `capo`. The neck then shows a capo bar on that fret and draws the shapes above it, the fret numbers
 count from the capo the way chord sheets write it, and the play-along sound and the microphone check use the
