@@ -18,11 +18,34 @@ export const CHORDS = {
   Dm: { frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1] },
   // The easy four-string Bm: no barre, only the D, G, B and high e strings.
   Bm: { frets: [-1, -1, 4, 4, 3, 2], fingers: [0, 0, 3, 4, 2, 1] },
+  // Seventh chords: a major chord with one note changed or added.
+  E7: { frets: [0, 2, 0, 1, 0, 0], fingers: [0, 2, 0, 1, 0, 0] },
+  A7: { frets: [-1, 0, 2, 0, 2, 0], fingers: [0, 0, 2, 0, 3, 0] },
+  B7: { frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4] },
+  G7: { frets: [3, 2, 0, 0, 0, 1], fingers: [3, 2, 0, 0, 0, 1] },
+  C7: { frets: [-1, 3, 2, 3, 1, 0], fingers: [0, 3, 2, 4, 1, 0] },
+  D7: { frets: [-1, -1, 0, 2, 1, 2], fingers: [0, 0, 0, 2, 1, 3] },
+  Am7: { frets: [-1, 0, 2, 0, 1, 0], fingers: [0, 0, 2, 0, 1, 0] },
+  Fmaj7: { frets: [-1, -1, 3, 2, 1, 0], fingers: [0, 0, 3, 2, 1, 0] },
+  // The anchor family: ring and pinky stay on the 3rd fret of the B and high e strings.
+  Em7: { frets: [0, 2, 2, 0, 3, 3], fingers: [0, 1, 2, 0, 3, 4] },
+  Cadd9: { frets: [-1, 3, 2, 0, 3, 3], fingers: [0, 2, 1, 0, 3, 4] },
+  Dsus4: { frets: [-1, -1, 0, 2, 3, 3], fingers: [0, 0, 0, 1, 3, 4] },
+  // Sus2 chords: lift a finger off a major chord.
+  Asus2: { frets: [-1, 0, 2, 2, 0, 0], fingers: [0, 0, 1, 2, 0, 0] },
+  Dsus2: { frets: [-1, -1, 0, 2, 3, 0], fingers: [0, 0, 0, 1, 3, 0] },
+  // First barre chords, still within the first four frets. The index lies flat across the strings.
+  'F barre': { frets: [1, 3, 3, 2, 1, 1], fingers: [1, 3, 4, 2, 1, 1] },
+  'Bm barre': { frets: [-1, 2, 4, 4, 3, 2], fingers: [0, 1, 3, 4, 2, 1] },
 };
 
 export const CHORD_NAMES = {
   Em: 'E minor', Am: 'A minor', E: 'E major', A: 'A major', D: 'D major',
   C: 'C major', G: 'G major', Dm: 'D minor', F: 'F major', Bm: 'B minor',
+  E7: 'E seven', A7: 'A seven', B7: 'B seven', G7: 'G seven', C7: 'C seven', D7: 'D seven',
+  Am7: 'A minor seven', Fmaj7: 'F major seven', Em7: 'E minor seven', Cadd9: 'C add nine',
+  Dsus4: 'D sus four', Asus2: 'A sus two', Dsus2: 'D sus two',
+  'F barre': 'F major (barre)', 'Bm barre': 'B minor (barre)',
 };
 
 const STRUMS = {
@@ -34,6 +57,8 @@ const STRUMS = {
   ballad: [[0, 'D'], [1, 'D'], [2, 'D'], [2.5, 'U'], [3.5, 'U']],
   two: [[0, 'D'], [1, 'D']],
   three: [[0, 'D'], [1, 'D'], [2, 'D']],
+  // Blues: down on the beats, an up-strum after beats 2 and 4.
+  blues: [[0, 'D'], [1, 'D'], [1.5, 'U'], [2, 'D'], [3, 'D'], [3.5, 'U']],
 };
 
 function playedStrings(frets) {
@@ -167,6 +192,42 @@ function aerials() {
     ['Bridge', bridge], ['Chorus', chorus], ['Outro', [...barsOf(['Dm', 'C', 'Dm', 'C'], 'whole'), ['Dm', 'whole']]]];
 }
 
+// 12-Bar Blues in E: the standard blues form with E7, A7 and B7, played twice. An exercise, not a cover.
+function twelveBar() {
+  const form = barsOf(['E7', 'E7', 'E7', 'E7', 'A7', 'A7', 'E7', 'E7', 'B7', 'A7', 'E7', 'B7'], 'blues');
+  return [['Twelve bars', barsOf(form.map(([c]) => c), 'ballad')], ['Twelve bars', form], ['Ending', [['E7', 'whole']]]];
+}
+
+// When the Saints Go Marching In (traditional, public domain): the usual chords in G, with G7 leading to C.
+function saints() {
+  const verse = barsOf(['G', 'G', 'G', 'G', 'G', 'G', 'D7', 'D7', 'G', 'G7', 'C', 'C', 'G', 'D7', 'G', 'G'], 'campfire');
+  return [['Verse', barsOf(verse.map(([c]) => c), 'quarters')], ['Verse', verse], ['Ending', [['G', 'whole']]]];
+}
+
+// Anchor Strum: an exercise for the anchor family. Ring and pinky never leave the B and high e strings
+// except for the G, where only the pinky lifts.
+function anchorStrum() {
+  const intro = barsOf(['Em7', 'Cadd9', 'Dsus4', 'Em7'], 'whole');
+  const verse = barsOf(['Em7', 'Cadd9', 'Dsus4', 'Em7', 'Em7', 'Cadd9', 'Dsus4', 'Dsus4'], 'ballad');
+  const chorus = barsOf(['Cadd9', 'G', 'Dsus4', 'Em7', 'Cadd9', 'G', 'Dsus4', 'Dsus4'], 'campfire');
+  return [['Intro', intro], ['Verse', verse], ['Chorus', chorus], ['Verse', verse], ['Chorus', chorus],
+    ['Ending', [['Em7', 'whole']]]];
+}
+
+// Soft Sevenths: an exercise with Am7 and Fmaj7 between C and G.
+function softSevenths() {
+  const verse = barsOf(['C', 'Am7', 'Fmaj7', 'G', 'C', 'Am7', 'Fmaj7', 'Fmaj7'], 'ballad');
+  const chorus = barsOf(['Fmaj7', 'C', 'G', 'Am7', 'Fmaj7', 'C', 'G', 'G'], 'campfire');
+  return [['Verse', verse], ['Chorus', chorus], ['Verse', verse], ['Chorus', chorus], ['Ending', [['C', 'whole']]]];
+}
+
+// First Barre: an exercise for the full F and the barred Bm, with open chords around them.
+function firstBarre() {
+  const verse = barsOf(['C', 'G', 'Am', 'F barre', 'C', 'G', 'F barre', 'F barre'], 'ballad');
+  const chorus = barsOf(['Bm barre', 'G', 'D', 'A', 'Bm barre', 'G', 'A', 'A'], 'campfire');
+  return [['Verse', verse], ['Chorus', chorus], ['Verse', verse], ['Chorus', chorus], ['Ending', [['C', 'whole']]]];
+}
+
 // Songs without named parts get one section every four bars.
 function withSections(song) {
   if (song.sections) return song;
@@ -254,6 +315,27 @@ export const SONGS = [
     { id: 'aerials', title: 'Aerials', subtitle: 'System of a Down — simplified to open chords around Dm, no drop tuning', bpm: 80, beatsPerBar: 4 },
     aerials(),
   ),
+  // Exercises for the later courses: chords and strum patterns only.
+  sectionedSong(
+    { id: 'twelve-bar', title: '12-Bar Blues in E', subtitle: 'The blues form with E7, A7 and B7 — first plain, then with up-strums', bpm: 84, beatsPerBar: 4 },
+    twelveBar(),
+  ),
+  sectionedSong(
+    { id: 'saints', title: 'When the Saints Go Marching In', subtitle: 'Traditional — G, G7, C and D7', bpm: 96, beatsPerBar: 4 },
+    saints(),
+  ),
+  sectionedSong(
+    { id: 'anchor-strum', title: 'Anchor Strum', subtitle: 'Em7 – Cadd9 – Dsus4 – G: ring and pinky stay put', bpm: 80, beatsPerBar: 4 },
+    anchorStrum(),
+  ),
+  sectionedSong(
+    { id: 'soft-sevenths', title: 'Soft Sevenths', subtitle: 'C – Am7 – Fmaj7 – G, a mellow ballad strum', bpm: 72, beatsPerBar: 4 },
+    softSevenths(),
+  ),
+  sectionedSong(
+    { id: 'first-barre', title: 'First Barre', subtitle: 'The full F and the barred Bm among open chords', bpm: 70, beatsPerBar: 4 },
+    firstBarre(),
+  ),
   drillSong({ id: 'drill-em-am', title: 'Change drill: Em ↔ Am', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Em', 'Am']),
   drillSong({ id: 'drill-g-c', title: 'Change drill: G ↔ C', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'C']),
   drillSong({ id: 'drill-g-d', title: 'Change drill: G ↔ D', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['G', 'D']),
@@ -263,5 +345,13 @@ export const SONGS = [
   drillSong({ id: 'drill-i-see-fire', title: 'Change drill: Em – C – D', subtitle: 'The chorus changes in I See Fire, with fewer free beats each round' }, ['Em', 'C', 'D']),
   drillSong({ id: 'drill-aerials', title: 'Change drill: Dm – C – F – Am', subtitle: 'The changes in Aerials, with fewer free beats each round' }, ['Dm', 'C', 'F', 'Am']),
   drillSong({ id: 'drill-bm-g', title: 'Change drill: Bm ↔ G', subtitle: 'The main change in One, with fewer free beats each round' }, ['Bm', 'G']),
+  drillSong({ id: 'drill-c-f', title: 'Change drill: C ↔ F', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['C', 'F']),
+  drillSong({ id: 'drill-blues', title: 'Change drill: E7 – A7 – E7 – B7', subtitle: 'The changes in the 12-bar blues, with fewer free beats each round' }, ['E7', 'A7', 'E7', 'B7']),
+  drillSong({ id: 'drill-saints', title: 'Change drill: G – G7 – C – D7', subtitle: 'The changes in When the Saints, with fewer free beats each round' }, ['G', 'G7', 'C', 'D7']),
+  drillSong({ id: 'drill-anchor', title: 'Change drill: Em7 – Cadd9 – Dsus4 – G', subtitle: 'The anchor family, with fewer free beats each round' }, ['Em7', 'Cadd9', 'Dsus4', 'G']),
+  drillSong({ id: 'drill-sus', title: 'Change drill: D – Dsus4 – D – Dsus2', subtitle: 'Flick one finger on and off, with fewer free beats each round' }, ['D', 'Dsus4', 'D', 'Dsus2']),
+  drillSong({ id: 'drill-soft', title: 'Change drill: C – Am7 – Fmaj7 – G', subtitle: 'The changes in Soft Sevenths, with fewer free beats each round' }, ['C', 'Am7', 'Fmaj7', 'G']),
+  drillSong({ id: 'drill-barre-f', title: 'Change drill: C ↔ F barre', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['C', 'F barre']),
+  drillSong({ id: 'drill-barre', title: 'Change drill: C – G – Am – F barre', subtitle: 'The verse of First Barre, with fewer free beats each round' }, ['C', 'G', 'Am', 'F barre']),
   drillSong({ id: 'drill-am-e', title: 'Change drill: Am ↔ E', subtitle: 'One strum per bar, then two, three and four — the silent beats are for moving' }, ['Am', 'E']),
 ].map(withSections);

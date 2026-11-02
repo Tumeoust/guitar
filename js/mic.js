@@ -171,9 +171,12 @@ export class MicJudge {
     for (const f of win) for (let k = 0; k < 12; k++) avg[k] += f.fine[k];
     const sim = cosine(avg, chordTemplate(frets));
 
+    // Another shape of the same notes (the barre F and the small F) is no rival: it sounds the same chord.
+    // The silent-string check below still tells them apart when strings are left out.
+    const notes = pitchClasses(frets);
     let rival = null, rivalSim = -1;
     for (const [name, other] of Object.entries(candidates)) {
-      if (other.join() === frets.join()) continue;
+      if (other.join() === frets.join() || pitchClasses(other) === notes) continue;
       const c = cosine(avg, chordTemplate(other));
       if (c > rivalSim) { rival = name; rivalSim = c; }
     }
@@ -182,7 +185,7 @@ export class MicJudge {
 
     // Against a near twin, the notes the two chords differ in decide when they are clear-cut. Otherwise
     // the overall profile must lead by the margin.
-    const duel = rival ? this.noteDuel(frets, candidates[rival], win) : null;
+    const duel = rival ? this.noteDuel(frets, candidates[rival], win) ?? noteClassDuel(avg, frets, candidates[rival]) : null;
     const clear = duel != null && (duel >= DUEL || duel <= 1 / DUEL);
     const beatsRival = clear ? duel >= DUEL : sim - rivalSim >= LESSON.margin;
     const rivalWins = clear ? duel <= 1 / DUEL : rivalSim > sim;
@@ -220,17 +223,32 @@ export class MicJudge {
 
   // Near twins differ in a note or two, often on a thin, quiet string that hardly moves the overall
   // profile (a D with a soft high e reads as Dm). So compare those notes directly: how many times louder
-  // the expected chord's notes are than the other chord's. null unless both chords sound the same
-  // strings and differ on at most two of them.
+  // the expected chord's notes are than the other chord's. null unless the strings both chords sound
+  // differ on one or two of them.
+  // A differing note that is also an overtone of a string both chords share (the G4 of Em7 over the open
+  // G string) says nothing, so it is left out. When only one chord has telling notes (Em7 adds a D to Em),
+  // the other side counts as a faint note: a tenth of the loudest shared string.
   noteDuel(frets, other, win) {
-    const differ = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] !== other[s]);
-    if (!differ.length || differ.length > 2 || differ.some((s) => !(frets[s] >= 0) || !(other[s] >= 0))) return null;
-    let mine = 1e-9, theirs = 1e-9;
+    // Strings only one of the chords sounds are left out (the full F against Fmaj7 differs on the high e).
+    const both = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] >= 0 && other[s] >= 0);
+    const differ = both.filter((s) => frets[s] !== other[s]);
+    if (!differ.length || differ.length > 2) return null;
+    const shared = [0, 1, 2, 3, 4, 5].filter((s) => frets[s] === other[s] && frets[s] >= 0);
+    const sharedHz = shared.map((s) => midiToHz(midiOf(s, frets[s])));
+    const masked = (s, fret) => {
+      const hz = midiToHz(midiOf(s, fret));
+      return sharedHz.some((f) => [1, 2, 3, 4, 5, 6].some((h) => Math.abs((f * h) / hz - 1) < 0.02));
+    };
+    let mine = 0, theirs = 0, nMine = 0, nTheirs = 0;
     for (const s of differ) {
-      mine += this.noteLevel(win, s, frets[s]);
-      theirs += this.noteLevel(win, s, other[s]);
+      if (!masked(s, frets[s])) { mine += this.noteLevel(win, s, frets[s]); nMine++; }
+      if (!masked(s, other[s])) { theirs += this.noteLevel(win, s, other[s]); nTheirs++; }
     }
-    return mine / theirs;
+    if (!nMine && !nTheirs) return null;
+    const faint = 0.1 * Math.max(0, ...shared.map((s) => this.noteLevel(win, s, frets[s])));
+    if (!nMine) mine = faint * nTheirs;
+    if (!nTheirs) theirs = faint * nMine;
+    return (mine + 1e-9) / (theirs + 1e-9);
   }
 
   // Strings whose fundamental is (nearly) absent. A string is only blamed when no other string has
@@ -272,6 +290,31 @@ export class MicJudge {
     const sim = Math.max(cosine(now, tmpl), cosine(rise, tmpl));
     return sim >= (ev.dir === 'U' ? 0.5 : 0.6);
   }
+}
+
+// The notes a shape sounds, ignoring octaves.
+function pitchClassSet(frets) {
+  const pcs = new Set();
+  frets.forEach((f, s) => { if (f != null && f >= 0) pcs.add(midiOf(s, f) % 12); });
+  return pcs;
+}
+
+// The same, as a key.
+function pitchClasses(frets) {
+  return [...pitchClassSet(frets)].sort((a, b) => a - b).join();
+}
+
+// For rivals that differ on more strings than noteDuel compares (Bm and B7): how much louder, in the
+// chroma, the notes only the expected chord has are than the notes only the rival has. A side with no
+// notes of its own (Em inside Em7) counts as a faint note, a tenth of the loudest note class.
+function noteClassDuel(avg, frets, other) {
+  const mine = pitchClassSet(frets), theirs = pitchClassSet(other);
+  const onlyMine = [...mine].filter((pc) => !theirs.has(pc));
+  const onlyTheirs = [...theirs].filter((pc) => !mine.has(pc));
+  if (!onlyMine.length && !onlyTheirs.length) return null;
+  const faint = 0.1 * Math.max(...avg);
+  const mean = (pcs) => (pcs.length ? pcs.reduce((sum, pc) => sum + avg[pc], 0) / pcs.length : faint);
+  return (mean(onlyMine) + 1e-9) / (mean(onlyTheirs) + 1e-9);
 }
 
 // Expected 12-bin chroma for a set of strings, including the first overtones of each note:

@@ -19,11 +19,12 @@ const BASS_LO = 40; // bass roots sit in E2..Eb3
 const mod12 = (n) => ((n % 12) + 12) % 12;
 
 function parseChord(name) {
-  const m = /^([A-G])([#b]?)(m?)/.exec(name);
+  // Sevenths, add9 and barre shapes are played as their plain triad; sus chords keep the 2nd or 4th.
+  const m = /^([A-G])([#b]?)(m(?!aj))?(?:.*sus([24]))?/.exec(name);
   if (!m) return null;
   const letter = LETTERS.indexOf(m[1]);
   const acc = m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0;
-  return { pc: mod12(LETTER_PC[letter] + acc), minor: m[3] === 'm' };
+  return { pc: mod12(LETTER_PC[letter] + acc), minor: m[3] === 'm', sus: m[4] ? Number(m[4]) : 0 };
 }
 
 // A spelled note: diatonic step (middle C = 28), accidental and a short label.
@@ -88,11 +89,12 @@ function arrange(song, capo) {
       if (!c) continue;
       const pc = mod12(c.pc + capo);
       const name = (c.minor ? MINOR_NAMES : MAJOR_NAMES)[pc];
-      chords.push({ beat: seg.beat, name: name + (c.minor ? 'm' : '') });
-      // Spell the triad by letters: root, root + 2 letters, root + 4 letters.
+      chords.push({ beat: seg.beat, name: name + (c.minor ? 'm' : '') + (c.sus ? `sus${c.sus}` : '') });
+      // Spell the triad by letters: root, root + 2 letters (1 or 3 for sus2 / sus4), root + 4 letters.
       const rootL = letterOf(name);
-      const pcs = [pc, mod12(pc + (c.minor ? 3 : 4)), mod12(pc + 7)];
-      const letters = [rootL, (rootL + 2) % 7, (rootL + 4) % 7];
+      const third = c.sus === 2 ? 2 : c.sus === 4 ? 5 : c.minor ? 3 : 4;
+      const pcs = [pc, mod12(pc + third), mod12(pc + 7)];
+      const letters = [rootL, (rootL + (c.sus ? c.sus - 1 : 2)) % 7, (rootL + 4) % 7];
       const voicing = pickVoicing(triadVoicings(pcs), prev);
       prev = voicing;
       const bass = BASS_LO + mod12(pc - BASS_LO);
