@@ -10,6 +10,11 @@ export const TUNINGS = [
   // step down. Aerials by System of a Down is played in it.
   { id: 'dropC', title: 'Drop C (C G C F A D)', midi: [36, 43, 48, 53, 57, 62],
     labels: ['C', 'G', 'c', 'F', 'A', 'd'], strings: ['low C', 'G', 'C', 'F', 'A', 'high D'] },
+  // Open C minor: the open strings ring a C minor chord. The notes repeat, so the strings are named
+  // by number.
+  { id: 'openCm', title: 'Open C minor (C G C G C E♭)', midi: [36, 43, 48, 55, 60, 63],
+    labels: ['C', 'G', 'c', 'g', 'c', 'E♭'], names: ['C2', 'G2', 'C3', 'G3', 'C4', 'E♭4'],
+    strings: ['6th (low C)', '5th (G)', '4th (C)', '3rd (G)', '2nd (C)', '1st (E♭)'] },
 ];
 
 export function tunerStrings(id) {
@@ -19,7 +24,7 @@ export function tunerStrings(id) {
     hz: midiToHz(midi),
     label: t.labels[s],
     string: t.strings[s],
-    name: midiName(midi),
+    name: t.names?.[s] ?? midiName(midi),
   }));
 }
 
@@ -175,7 +180,7 @@ export class Tuner {
       hz: this.hz,
       cents: this.cents,
       shown: this.shown,
-      note: midiName(hzToMidi(this.hz)),
+      note: noteName(Math.round(hzToMidi(this.hz)), this.strings[this.string]),
       inTune: Math.abs(this.cents) <= TUNE.in,
       done: this.done,
     };
@@ -207,6 +212,8 @@ export function chime(ctx, all) {
   });
 }
 
+// Spell a heard note the way the string being tuned is spelled (E♭4, not D#4) when they match.
+const noteName = (midi, st) => (midi === st.midi ? st.name : midiName(midi));
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 
 function median(xs) {
