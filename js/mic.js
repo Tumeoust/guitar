@@ -344,10 +344,10 @@ function sensitivityToRms(value) {
   return 0.004 * Math.pow(2, (10 - value) / 2);
 }
 
-// YIN pitch detector; returns Hz or 0.
-export function yin(buf, sr) {
+// YIN pitch detector; returns Hz or 0. Looks for pitches from minHz up to 1100 Hz.
+export function yin(buf, sr, minHz = 70) {
   const minLag = Math.floor(sr / 1100);
-  const maxLag = Math.min(Math.floor(sr / 70), Math.floor(buf.length / 2));
+  const maxLag = Math.min(Math.floor(sr / minHz), Math.floor(buf.length / 2));
   const w = buf.length - maxLag;
   const d = new Float32Array(maxLag + 1);
   for (let tau = 1; tau <= maxLag; tau++) {

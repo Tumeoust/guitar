@@ -251,8 +251,9 @@
         <button class="back" title="Back (Esc)">← Back</button>
         <h2>Tuner</h2>
       </div>
-      <p class="muted small">Standard tuning. Play one string at a time and let it ring; the tuner works out which string it is.
-        Tap a string to tune only that one.</p>
+      <label class="capo-row" title="Drop C (C G C F A D) is the tuning of songs like Aerials by System of a Down.">Tuning <select id="tuner-tuning"></select></label>
+      <p class="muted small">Play one string at a time and let it ring; the tuner works out which string it is.
+        Tap a string to tune only that one — do that when switching tunings, while a string is still far from its new note.</p>
       <div id="tuner-strings" class="tuner-strings" role="group" aria-label="Strings"></div>
       <div id="tuner-gauge" class="gauge idle">
         <svg viewBox="0 0 300 175" aria-hidden="true">

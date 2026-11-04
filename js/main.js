@@ -7,7 +7,7 @@ import { GuitarAudio } from './audio.js';
 import { MicJudge, LESSON } from './mic.js';
 import { midiName, setCapo } from './music.js';
 import { LESSONS, LessonRunner, CANDIDATES, chordFeedback, stringName } from './lessons.js';
-import { Tuner, TUNER_STRINGS, chime } from './tuner.js';
+import { Tuner, TUNINGS, tunerStrings, chime } from './tuner.js';
 import { PianoPart } from './piano.js';
 
 const $ = (id) => document.getElementById(id);
@@ -133,7 +133,7 @@ const state = {
 };
 // Settings the player picks are remembered between visits. Drills from the lessons override some of
 // them while they play (see startDrill); applySettings() puts the player's own choice back.
-const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0, piano: false, wait: false };
+const settings = { speed: 100, guide: false, metro: false, loop: false, look: 2.4, latency: 60, checkPitch: true, capo: 0, piano: false, wait: false, tuning: 'standard' };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('fretview.settings'))); } catch { /* storage unavailable */ }
 function saveSetting(name, value) {
   settings[name] = value;
@@ -1081,6 +1081,8 @@ const gaugeArc = (from, to, r) => {
   return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 0 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
 };
 
+let tunerStrs = tunerStrings(settings.tuning); // the strings of the tuning picked in the tuner
+
 function buildTuner() {
   const svg = $('tuner-gauge').querySelector('svg');
   svg.querySelector('.gauge-arc').setAttribute('d', gaugeArc(-50, 50, GAUGE.r));
@@ -1103,10 +1105,25 @@ function buildTuner() {
       $('tuner-ticks').append(text);
     }
   }
-  $('tuner-strings').replaceChildren(...TUNER_STRINGS.map((st, s) => {
+  const select = $('tuner-tuning');
+  select.replaceChildren(...TUNINGS.map((tuning) => new Option(tuning.title, tuning.id)));
+  select.value = TUNINGS.some((tuning) => tuning.id === settings.tuning) ? settings.tuning : 'standard';
+  select.addEventListener('change', () => {
+    saveSetting('tuning', select.value);
+    tunerStrs = tunerStrings(select.value);
+    tuner?.setTuning(tunerStrs);
+    tunerShown = null;
+    buildTunerStrings();
+    renderTunerStrings();
+  });
+  buildTunerStrings();
+}
+
+function buildTunerStrings() {
+  $('tuner-strings').replaceChildren(...tunerStrs.map((st, s) => {
     const b = document.createElement('button');
     b.dataset.string = s;
-    b.title = `${stringName(s)} string (${st.name}). Tap to tune only this string, tap again for automatic.`;
+    b.title = `${st.string} string (${st.name}). Tap to tune only this string, tap again for automatic.`;
     b.innerHTML = `<b>${st.label}</b><span>${st.name}</span>`;
     b.addEventListener('click', () => {
       tuner?.setLock(tuner.lock === s ? null : s);
@@ -1135,7 +1152,7 @@ async function openTuner() {
       check.classList.add('pop');
       renderTunerStrings();
     },
-  });
+  }, tunerStrs);
   if (!tuner.active) tuner.start(mic.src);
   renderTunerStrings();
 }
@@ -1148,6 +1165,12 @@ function renderTunerStrings() {
     b.classList.toggle('locked', s === tuner?.lock);
     b.classList.toggle('tuned', !!tuner?.tuned.has(s));
   });
+}
+
+// Retuning from one tuning to another moves strings by whole semitones; say how many.
+function howFar(cents) {
+  const semis = Math.round(Math.abs(cents) / 100);
+  return semis >= 1 ? ` (about ${semis} semitone${semis > 1 ? 's' : ''})` : Math.abs(cents) > 50 ? ' (a lot)' : '';
 }
 
 let tunerShown = null;
@@ -1170,22 +1193,22 @@ function updateTuner(t) {
   tunerShown = key;
   renderTunerStrings();
   if (!r) {
-    const st = TUNER_STRINGS[tuner.lock];
+    const st = tunerStrs[tuner.lock];
     $('tuner-note').textContent = st ? st.label : '—';
-    $('tuner-cents').textContent = st ? `${stringName(tuner.lock)} string · ${st.name}` : '';
-    const all = tuner.tuned.size === TUNER_STRINGS.length;
-    $('tuner-hint').textContent = all ? '🎉 All six strings are in tune' : st ? `Play the ${stringName(tuner.lock)} string` : 'Play a string';
+    $('tuner-cents').textContent = st ? `${st.string} string · ${st.name}` : '';
+    const all = tuner.tuned.size === tunerStrs.length;
+    $('tuner-hint').textContent = all ? '🎉 All six strings are in tune' : st ? `Play the ${st.string} string` : 'Play a string';
     $('tuner-hint').className = all ? 'ok' : '';
     return;
   }
-  const st = TUNER_STRINGS[r.string];
+  const st = tunerStrs[r.string];
   const c = Math.round(r.cents);
   $('tuner-note').textContent = st.label;
-  $('tuner-cents').textContent = `${stringName(r.string)} string · heard ${r.note}, ${r.hz.toFixed(1)} Hz · ${c > 0 ? '+' : ''}${c} cents`;
+  $('tuner-cents').textContent = `${st.string} string · heard ${r.note}, ${r.hz.toFixed(1)} Hz · ${c > 0 ? '+' : ''}${c} cents`;
   let hint, cls;
   if (r.done || r.inTune) [hint, cls] = [r.done ? '✓ In tune' : 'Hold it…', 'ok'];
-  else if (r.cents < 0) [hint, cls] = [`Too low — tighten the string ↑${Math.abs(c) > 50 ? ' (a lot)' : ''}`, 'bad'];
-  else [hint, cls] = [`Too high — loosen the string ↓${c > 50 ? ' (a lot)' : ''}`, 'bad'];
+  else if (r.cents < 0) [hint, cls] = [`Too low — tighten the string ↑${howFar(c)}`, 'bad'];
+  else [hint, cls] = [`Too high — loosen the string ↓${howFar(c)}`, 'bad'];
   $('tuner-hint').textContent = hint;
   $('tuner-hint').className = cls;
 }
